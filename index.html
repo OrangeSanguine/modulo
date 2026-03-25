@@ -5510,18 +5510,6 @@ function renderFinancements(projet) {
 
     var raw = r._raw || {};
 
-    // Filtre Besoins détectés — si besoins renseignés sur le projet
-    // et le dispositif a une colonne Besoins, on vérifie la correspondance
-    if (besoinsProjet.length > 0 && raw['Besoins']) {
-      var besoinsDisp = (raw['Besoins'] || '').toLowerCase();
-      if (besoinsDisp && !besoinsDisp.includes('tous')) {
-        var besoinOk = besoinsProjet.some(function(b) {
-          return besoinsDisp.includes(b.toLowerCase());
-        });
-        if (!besoinOk) return false;
-      }
-    }
-
     // Filtre Deeptech
     var reqDeeptech = (raw['Deeptech'] || '').toLowerCase();
     if (reqDeeptech === 'oui' && !isDeeptech) return false;
