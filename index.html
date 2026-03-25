@@ -5558,7 +5558,8 @@ var fl = projet._filtresFinancements || {};
 
   // Filtrer dispositifs pertinents
   var dispositifs = RESSOURCES.filter(function(r) {
-    if (r.categorie !== 'Financement') return false;
+    var catsFinancement = ['Financement', 'Concours', 'Appel à projets', 'Prestation', 'Fiscalité'];
+    if (catsFinancement.indexOf(r.categorie) === -1) return false;
     if (r.actif === false) return false; // Filtre statut inactif
     if (!r.phases) return false;
     if (!phaseMatch(r.phases, phase)) return false;
