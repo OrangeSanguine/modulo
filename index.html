@@ -5488,13 +5488,15 @@ function renderFinancements(projet) {
     return;
   }
 
-  var phase = projet.phase || 1;
-  var isDeeptech = projet.deeptech === 'oui';
-  var taille = projet.taille || '';
+var fl = projet._filtresFinancements || {};
+  var phase = fl.phase || projet.phase || 1;
+  var isDeeptech = fl.deeptech !== undefined ? fl.deeptech : (projet.deeptech === 'oui');
+  var taille = fl.taille !== undefined ? fl.taille : (projet.taille || '');
   var ageMois = projet.age_mois || null;
-  var typeProjet = projet.type || 'porteur';
-  var disProjets = (projet.dis || '').toLowerCase();
-  var montantProjet = projet._montantFiltreFinancements || null; // filtre local à l'onglet
+  var typeProjet = fl.type || projet.type || 'porteur';
+  var disProjets = (fl.dis || projet.dis || '').toLowerCase();
+  var montantProjet = fl.montant || projet._montantFiltreFinancements || null;
+  var besoinsProjet = fl.besoins !== undefined ? fl.besoins : (projet.besoins || []);
 
   // Mapper type projet → labels bénéficiaires Sheet
   var benefLabels = [];
@@ -5504,8 +5506,6 @@ function renderFinancements(projet) {
   if (taille === 'tpe') benefLabels.push('tpe');
   if (taille === 'pme') benefLabels.push('pme');
   if (taille === 'eti') benefLabels.push('eti');
-
-  var besoinsProjet = projet.besoins || [];
 
   // Filtrer dispositifs pertinents
   var dispositifs = RESSOURCES.filter(function(r) {
@@ -5616,30 +5616,179 @@ function renderFinancements(projet) {
   if (!projet.deeptech) manquants.push('intensité techno');
   if (!projet.dis) manquants.push('DIS');
 
-  var bandeauHtml = '<div style="background:var(--blanc);border:1px solid var(--gris-moyen);border-left:3px solid var(--jaune);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:24px;">'
-    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">'
-      + '<div style="flex:1;min-width:0;">'
-        + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--gris-texte);margin-bottom:8px;">Filtres appliqués</div>'
-        + '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + filtresActifsHtml.join('') + '</div>'
+  // Valeurs des filtres locaux (modifiables dans le bandeau)
+  var filtresLocaux = projet._filtresFinancements || {
+    phase: phase,
+    type: typeProjet,
+    besoins: besoinsProjet.slice(),
+    modalite: '',
+    niveau: '',
+    montant: montantProjet || '',
+    deeptech: isDeeptech,
+    dis: disProjets,
+    taille: taille,
+    cumulable: '',
+    financeur: ''
+  };
+  projet._filtresFinancements = filtresLocaux;
+
+  // Résumé compact des filtres actifs
+  var resumeFiltres = [];
+  resumeFiltres.push('Phase ' + filtresLocaux.phase);
+  if (filtresLocaux.type) resumeFiltres.push({ porteur: 'Porteur', moins3: 'Entr. −3ans', plus3: 'Entr. +3ans' }[filtresLocaux.type] || filtresLocaux.type);
+  if (filtresLocaux.besoins && filtresLocaux.besoins.length > 0) resumeFiltres.push(filtresLocaux.besoins.length + ' besoin' + (filtresLocaux.besoins.length > 1 ? 's' : ''));
+  if (filtresLocaux.modalite) resumeFiltres.push(filtresLocaux.modalite);
+  if (filtresLocaux.niveau) resumeFiltres.push(filtresLocaux.niveau);
+  if (filtresLocaux.montant) resumeFiltres.push('≤ ' + filtresLocaux.montant + ' €');
+  if (filtresLocaux.deeptech) resumeFiltres.push('⚡ Deeptech');
+  if (filtresLocaux.financeur) resumeFiltres.push(filtresLocaux.financeur);
+
+  // Extraire valeurs uniques depuis les dispositifs chargés
+  var modalites = [];
+  var niveaux = [];
+  var financeurs = [];
+  var tousBesoins = [];
+  RESSOURCES.forEach(function(r) {
+    if (r.categorie !== 'Financement') return;
+    var raw2 = r._raw || {};
+    if (raw2['Modalite'] && modalites.indexOf(raw2['Modalite']) === -1) modalites.push(raw2['Modalite']);
+    if (raw2['Niveau'] && niveaux.indexOf(raw2['Niveau']) === -1) niveaux.push(raw2['Niveau']);
+    if (raw2['Financeur'] && financeurs.indexOf(raw2['Financeur']) === -1) financeurs.push(raw2['Financeur']);
+    if (raw2['Besoins']) {
+      raw2['Besoins'].split('·').forEach(function(b) {
+        var bt = b.trim();
+        if (bt && tousBesoins.indexOf(bt) === -1) tousBesoins.push(bt);
+      });
+    }
+  });
+  tousBesoins.sort();
+
+  var bandeauHtml = '<div id="fin-bandeau" style="background:var(--blanc);border:1px solid var(--gris-moyen);border-left:3px solid var(--jaune);border-radius:var(--radius-lg);margin-bottom:24px;overflow:hidden;">'
+
+    // ── Ligne fermée ──
+    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;cursor:pointer;gap:12px;" onclick="toggleBandeauFiltres(this)">'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:0;">'
+        + '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--gris-texte);white-space:nowrap;">Filtres</span>'
+        + '<span style="font-size:12px;font-weight:500;color:var(--gris-texte);">' + resumeFiltres.join(' · ') + '</span>'
       + '</div>'
-      // Champ montant interactif
-      + '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">'
-        + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--gris-texte);">Montant à financer</div>'
-        + '<div style="display:flex;align-items:center;gap:6px;">'
-          + '<input type="number" id="fin-montant-input" placeholder="ex: 50000" '
-            + 'style="font-family:var(--font);font-size:13px;font-weight:600;color:var(--noir);border:1.5px solid var(--gris-moyen);border-radius:var(--radius-sm);padding:6px 10px;width:130px;outline:none;" '
-            + 'oninput="filtrerParMontant(this.value)" '
-            + 'onfocus="this.style.borderColor=\'var(--jaune)\'" '
-            + 'onblur="this.style.borderColor=\'var(--gris-moyen)\'">'
-          + '<span style="font-size:13px;color:var(--gris-texte);">€</span>'
-          + (montantProjet ? '<button onclick="filtrerParMontant(\'\')" style="font-family:var(--font);font-size:11px;color:var(--corail);background:none;border:none;cursor:pointer;padding:0;">×</button>' : '')
-        + '</div>'
-        + '<div style="font-size:10px;color:var(--gris-meta);">Exclut les dispositifs hors budget</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
+        + '<span style="font-size:11px;font-weight:600;color:var(--gris-texte);">' + dispositifs.length + ' résultat' + (dispositifs.length > 1 ? 's' : '') + '</span>'
+        + '<span id="fin-bandeau-arrow" style="font-size:11px;color:var(--gris-texte);transition:transform 0.2s;">▼</span>'
       + '</div>'
     + '</div>'
-    + (manquants.length > 0
-      ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gris-moyen);font-size:11px;color:var(--gris-texte);">⚠ Pour affiner : renseignez via <strong>Modifier</strong> — ' + manquants.join(', ') + '</div>'
-      : '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gris-moyen);font-size:11px;color:var(--vert);font-weight:600;">✓ Profil complet</div>')
+
+    // ── Panneau dépliable ──
+    + '<div id="fin-bandeau-panel" style="display:none;border-top:1px solid var(--gris-moyen);padding:16px 18px;">'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;">'
+
+        // Phase
+        + '<div>'
+          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Phase</div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+            + [1,2,3,4].map(function(p) {
+                var col = PHASE_COLORS[p] || '#FCC200';
+                var sel = filtresLocaux.phase == p;
+                return '<button onclick="setFiltreFin(\'phase\',' + p + ')" style="font-family:var(--font);font-size:12px;font-weight:' + (sel ? '700' : '500') + ';padding:4px 12px;border-radius:20px;border:1.5px solid ' + (sel ? col : 'var(--gris-moyen)') + ';background:' + (sel ? col + '20' : 'var(--blanc)') + ';color:' + (sel ? col : 'var(--gris-texte)') + ';cursor:pointer;">' + p + '</button>';
+              }).join('')
+          + '</div>'
+        + '</div>'
+
+        // Type bénéficiaire
+        + '<div>'
+          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Bénéficiaire</div>'
+          + '<select onchange="setFiltreFin(\'type\',this.value)" style="font-family:var(--font);font-size:12px;color:var(--noir);border:1px solid var(--gris-moyen);border-radius:var(--radius-sm);padding:5px 10px;background:var(--blanc);outline:none;width:100%;">'
+            + '<option value="porteur"' + (filtresLocaux.type==='porteur'?' selected':'') + '>Porteur de projet</option>'
+            + '<option value="moins3"' + (filtresLocaux.type==='moins3'?' selected':'') + '>Entreprise −3 ans</option>'
+            + '<option value="plus3"' + (filtresLocaux.type==='plus3'?' selected':'') + '>Entreprise +3 ans</option>'
+          + '</select>'
+        + '</div>'
+
+        // Taille
+        + '<div>'
+          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Taille</div>'
+          + '<select onchange="setFiltreFin(\'taille\',this.value)" style="font-family:var(--font);font-size:12px;color:var(--noir);border:1px solid var(--gris-moyen);border-radius:var(--radius-sm);padding:5px 10px;background:var(--blanc);outline:none;width:100%;">'
+            + '<option value="">Toutes tailles</option>'
+            + '<option value="tpe"' + (filtresLocaux.taille==='tpe'?' selected':'') + '>TPE</option>'
+            + '<option value="pme"' + (filtresLocaux.taille==='pme'?' selected':'') + '>PME</option>'
+            + '<option value="eti"' + (filtresLocaux.taille==='eti'?' selected':'') + '>ETI</option>'
+          + '</select>'
+        + '</div>'
+
+        // Niveau
+        + '<div>'
+          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Niveau</div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+            + ['Régional','National','Européen'].map(function(n) {
+                var sel = filtresLocaux.niveau === n;
+                return '<button onclick="setFiltreFin(\'niveau\',\'' + n + '\')" style="font-family:var(--font);font-size:11px;font-weight:' + (sel?'700':'500') + ';padding:3px 10px;border-radius:20px;border:1.5px solid ' + (sel?'var(--noir)':'var(--gris-moyen)') + ';background:' + (sel?'var(--noir)':'var(--blanc)') + ';color:' + (sel?'var(--blanc)':'var(--gris-texte)') + ';cursor:pointer;">' + n + '</button>';
+              }).join('')
+          + '</div>'
+        + '</div>'
+
+        // Type financement
+        + '<div style="grid-column:1/-1;">'
+          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Type de financement</div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+            + modalites.map(function(m) {
+                var sel = filtresLocaux.modalite === m;
+                return '<button onclick="setFiltreFin(\'modalite\',\'' + m.replace(/'/g,"\\'") + '\')" style="font-family:var(--font);font-size:11px;font-weight:' + (sel?'700':'500') + ';padding:3px 10px;border-radius:20px;border:1.5px solid ' + (sel?'var(--noir)':'var(--gris-moyen)') + ';background:' + (sel?'var(--noir)':'var(--blanc)') + ';color:' + (sel?'var(--blanc)':'var(--gris-texte)') + ';cursor:pointer;">' + m + '</button>';
+              }).join('')
+          + '</div>'
+        + '</div>'
+
+        // Financeur
+        + '<div style="grid-column:1/-1;">'
+          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Financeur</div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+            + financeurs.map(function(f) {
+                var sel = filtresLocaux.financeur === f;
+                return '<button onclick="setFiltreFin(\'financeur\',\'' + f.replace(/'/g,"\\'") + '\')" style="font-family:var(--font);font-size:11px;font-weight:' + (sel?'700':'500') + ';padding:3px 10px;border-radius:20px;border:1.5px solid ' + (sel?'var(--noir)':'var(--gris-moyen)') + ';background:' + (sel?'var(--noir)':'var(--blanc)') + ';color:' + (sel?'var(--blanc)':'var(--gris-texte)') + ';cursor:pointer;">' + f + '</button>';
+              }).join('')
+          + '</div>'
+        + '</div>'
+
+        // Besoins
+        + '<div style="grid-column:1/-1;">'
+          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Besoins</div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+            + tousBesoins.map(function(b) {
+                var sel = filtresLocaux.besoins && filtresLocaux.besoins.indexOf(b) !== -1;
+                return '<button onclick="toggleFiltreBesoin(\'' + b.replace(/'/g,"\\'") + '\')" style="font-family:var(--font);font-size:11px;font-weight:' + (sel?'700':'500') + ';padding:3px 10px;border-radius:20px;border:1.5px solid ' + (sel?'var(--jaune)':'var(--gris-moyen)') + ';background:' + (sel?'rgba(252,194,0,0.12)':'var(--blanc)') + ';color:' + (sel?'#a07800':'var(--gris-texte)') + ';cursor:pointer;">' + b + '</button>';
+              }).join('')
+          + '</div>'
+        + '</div>'
+
+        // Montant + Deeptech + Cumulable
+        + '<div>'
+          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Montant à financer</div>'
+          + '<div style="display:flex;align-items:center;gap:6px;">'
+            + '<input type="number" id="fin-montant-input" placeholder="ex: 50000" value="' + (filtresLocaux.montant || '') + '" '
+              + 'style="font-family:var(--font);font-size:13px;font-weight:600;color:var(--noir);border:1.5px solid var(--gris-moyen);border-radius:var(--radius-sm);padding:6px 10px;width:130px;outline:none;" '
+              + 'oninput="setFiltreFin(\'montant\',this.value)" '
+              + 'onfocus="this.style.borderColor=\'var(--jaune)\'" '
+              + 'onblur="this.style.borderColor=\'var(--gris-moyen)\'">'
+            + '<span style="font-size:12px;color:var(--gris-texte);">€ max</span>'
+          + '</div>'
+        + '</div>'
+
+        + '<div style="display:flex;flex-direction:column;gap:8px;justify-content:flex-end;">'
+          + '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:500;color:var(--gris-texte);">'
+            + '<input type="checkbox" ' + (filtresLocaux.deeptech ? 'checked' : '') + ' onchange="setFiltreFin(\'deeptech\',this.checked)" style="width:14px;height:14px;accent-color:var(--violet);">'
+            + '⚡ Projets Deeptech uniquement'
+          + '</label>'
+          + '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:500;color:var(--gris-texte);">'
+            + '<input type="checkbox" ' + (filtresLocaux.cumulable === 'Oui' ? 'checked' : '') + ' onchange="setFiltreFin(\'cumulable\',this.checked?\'Oui\':\'\')" style="width:14px;height:14px;accent-color:var(--vert);">'
+            + '✓ Cumulables uniquement'
+          + '</label>'
+        + '</div>'
+
+      + '</div>'
+
+      // Réinitialiser
+      + '<div style="display:flex;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid var(--gris-moyen);">'
+        + '<button onclick="reinitialiserFiltresFin()" style="font-family:var(--font);font-size:12px;font-weight:600;color:var(--corail);background:none;border:none;cursor:pointer;padding:0;">Réinitialiser les filtres</button>'
+      + '</div>'
+    + '</div>'
   + '</div>';
 
   // Initialiser le suivi si besoin
@@ -5892,28 +6041,59 @@ function _finDetailCell(label, val) {
   + '</div>';
 }
 
-function filtrerParMontant(val) {
-  if (!currentProjet) return;
-  var montant = parseFloat(val) || null;
-  currentProjet._montantFiltreFinancements = montant;
-  // Mémoriser la position du curseur
-  var input = document.getElementById('fin-montant-input');
-  var cursorPos = input ? input.selectionStart : null;
-  // Re-render sans scroller
-  var scrollY = window.scrollY;
-  renderFinancements(currentProjet);
-  window.scrollTo(0, scrollY);
-  // Restaurer le focus et la valeur saisie (sans le zéro parasite)
-  setTimeout(function() {
-    var newInput = document.getElementById('fin-montant-input');
-    if (newInput) {
-      newInput.value = val;
-      newInput.focus();
-      if (cursorPos !== null) newInput.setSelectionRange(cursorPos, cursorPos);
-    }
-  }, 0);
+function toggleBandeauFiltres(header) {
+  var panel = document.getElementById('fin-bandeau-panel');
+  var arrow = document.getElementById('fin-bandeau-arrow');
+  if (!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
+function setFiltreFin(cle, valeur) {
+  if (!currentProjet) return;
+  if (!currentProjet._filtresFinancements) currentProjet._filtresFinancements = {};
+  currentProjet._filtresFinancements[cle] = valeur;
+  renderFinancements(currentProjet);
+  // Rouvrir le panneau après re-render
+  setTimeout(function() {
+    var panel = document.getElementById('fin-bandeau-panel');
+    var arrow = document.getElementById('fin-bandeau-arrow');
+    if (panel) panel.style.display = 'block';
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  }, 10);
+}
+
+function toggleFiltreBesoin(besoin) {
+  if (!currentProjet) return;
+  if (!currentProjet._filtresFinancements) currentProjet._filtresFinancements = {};
+  var besoins = currentProjet._filtresFinancements.besoins || [];
+  var idx = besoins.indexOf(besoin);
+  if (idx === -1) besoins.push(besoin);
+  else besoins.splice(idx, 1);
+  currentProjet._filtresFinancements.besoins = besoins;
+  renderFinancements(currentProjet);
+  setTimeout(function() {
+    var panel = document.getElementById('fin-bandeau-panel');
+    var arrow = document.getElementById('fin-bandeau-arrow');
+    if (panel) panel.style.display = 'block';
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  }, 10);
+}
+
+function reinitialiserFiltresFin() {
+  if (!currentProjet) return;
+  currentProjet._filtresFinancements = null;
+  renderFinancements(currentProjet);
+}
+
+function filtrerParMontant(val) {
+  if (!currentProjet) return;
+  if (!currentProjet._filtresFinancements) currentProjet._filtresFinancements = {};
+  currentProjet._filtresFinancements.montant = val ? parseInt(val) : '';
+  currentProjet._montantFiltreFinancements = val ? parseInt(val) : null;
+  renderFinancements(currentProjet);
+}
 function fermerDetailFin() {
   document.getElementById('modal-fin-detail').style.display = 'none';
 }
