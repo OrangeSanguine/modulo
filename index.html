@@ -5569,8 +5569,47 @@ var fl = projet._filtresFinancements || {};
       if (montantMin && montantProjet < montantMin) return false;
     }
 
+// ✅ Filtres interactifs du bandeau
+    var fl2 = projet._filtresFinancements || {};
+
+    // Filtre Niveau
+    if (fl2.niveau && raw['Niveau'] && raw['Niveau'] !== fl2.niveau) return false;
+
+    // Filtre Type de financement (Modalite)
+    if (fl2.modalite && raw['Modalite'] && raw['Modalite'] !== fl2.modalite) return false;
+
+    // Filtre Financeur
+    if (fl2.financeur && raw['Financeur'] && raw['Financeur'] !== fl2.financeur) return false;
+
+    // Filtre Besoins — au moins un besoin coché doit correspondre
+    if (fl2.besoins && fl2.besoins.length > 0 && raw['Besoins']) {
+      var besoinsDisp2 = raw['Besoins'].toLowerCase();
+      var besoinOk2 = fl2.besoins.some(function(b) {
+        return besoinsDisp2.includes(b.toLowerCase());
+      });
+      if (!besoinOk2) return false;
+    }
+
     return true;
-  }).sort(function(a,b){ return (a.priorite||2) - (b.priorite||2); });
+  }).map(function(r) {
+    // Score de pertinence
+    var raw2 = r._raw || {};
+    var besoinsDisp3 = (raw2['Besoins'] || '').toLowerCase();
+    var score = 0;
+    var bp = (projet._filtresFinancements && projet._filtresFinancements.besoins) ? projet._filtresFinancements.besoins : (projet.besoins || []);
+    if (bp.length > 0 && besoinsDisp3) {
+      var ok = bp.some(function(b) { return besoinsDisp3.includes(b.toLowerCase()); });
+      if (ok) score += 2;
+    }
+    if ((r.priorite || 2) === 1) score += 1;
+    // Badge Deeptech automatique si projet deeptech
+    if (projet.deeptech === 'oui' && (raw2['Deeptech'] || '').toLowerCase() === 'oui') score += 1;
+    r._score = score;
+    return r;
+  }).sort(function(a, b) {
+    if (b._score !== a._score) return b._score - a._score;
+    return (a.priorite || 2) - (b.priorite || 2);
+  });
 
   // Bandeau récapitulatif des filtres actifs
   var filtresActifsHtml = [];
@@ -5756,30 +5795,6 @@ var fl = projet._filtresFinancements || {};
                 return '<button onclick="toggleFiltreBesoin(\'' + b.replace(/'/g,"\\'") + '\')" style="font-family:var(--font);font-size:11px;font-weight:' + (sel?'700':'500') + ';padding:3px 10px;border-radius:20px;border:1.5px solid ' + (sel?'var(--jaune)':'var(--gris-moyen)') + ';background:' + (sel?'rgba(252,194,0,0.12)':'var(--blanc)') + ';color:' + (sel?'#a07800':'var(--gris-texte)') + ';cursor:pointer;">' + b + '</button>';
               }).join('')
           + '</div>'
-        + '</div>'
-
-        // Montant + Deeptech + Cumulable
-        + '<div>'
-          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Montant à financer</div>'
-          + '<div style="display:flex;align-items:center;gap:6px;">'
-            + '<input type="number" id="fin-montant-input" placeholder="ex: 50000" value="' + (filtresLocaux.montant || '') + '" '
-              + 'style="font-family:var(--font);font-size:13px;font-weight:600;color:var(--noir);border:1.5px solid var(--gris-moyen);border-radius:var(--radius-sm);padding:6px 10px;width:130px;outline:none;" '
-              + 'oninput="setFiltreFin(\'montant\',this.value)" '
-              + 'onfocus="this.style.borderColor=\'var(--jaune)\'" '
-              + 'onblur="this.style.borderColor=\'var(--gris-moyen)\'">'
-            + '<span style="font-size:12px;color:var(--gris-texte);">€ max</span>'
-          + '</div>'
-        + '</div>'
-
-        + '<div style="display:flex;flex-direction:column;gap:8px;justify-content:flex-end;">'
-          + '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:500;color:var(--gris-texte);">'
-            + '<input type="checkbox" ' + (filtresLocaux.deeptech ? 'checked' : '') + ' onchange="setFiltreFin(\'deeptech\',this.checked)" style="width:14px;height:14px;accent-color:var(--violet);">'
-            + '⚡ Projets Deeptech uniquement'
-          + '</label>'
-          + '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:500;color:var(--gris-texte);">'
-            + '<input type="checkbox" ' + (filtresLocaux.cumulable === 'Oui' ? 'checked' : '') + ' onchange="setFiltreFin(\'cumulable\',this.checked?\'Oui\':\'\')" style="width:14px;height:14px;accent-color:var(--vert);">'
-            + '✓ Cumulables uniquement'
-          + '</label>'
         + '</div>'
 
       + '</div>'
