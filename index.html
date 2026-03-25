@@ -4342,6 +4342,23 @@ function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
   updateHeader(name);
+
+  // ✅ B1 — Repeupler le select consultant à chaque ouverture du formulaire
+  if (name === 'nouveau-projet') {
+    var selC = document.getElementById('proj-consultant');
+    if (selC) {
+      var valActuelle = selC.value;
+      selC.innerHTML = '<option value="">Sélectionner...</option>';
+      CONSULTANTS.forEach(function(c) {
+        var opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.nom;
+        if (c.id === valActuelle) opt.selected = true;
+        selC.appendChild(opt);
+      });
+    }
+  }
+
   window.scrollTo(0, 0);
 }
 
@@ -4452,16 +4469,43 @@ function updateLeviers() {
 function updateDashboard() {
   const from = document.getElementById('dateFrom').value;
   const to = document.getElementById('dateTo').value;
-  // Calcul simplifié — sera remplacé par données Google Sheet
   document.getElementById('kpi-projets').textContent = projets.length;
   const totalRdv = projets.reduce((a, p) => a + p.rdv, 0);
   document.getElementById('kpi-rdv').textContent = totalRdv;
-  const totalFin = projets.reduce((a, p) => a + p.fin_public, 0);
+
+  // ✅ B5 — Recalcul fin_public à la volée depuis suiviFinancements
+  var totalFin = 0;
+  projets.forEach(function(p) {
+    if (p.suiviFinancements && p.suiviFinancements.length > 0) {
+      var finProjet = 0;
+      p.suiviFinancements.forEach(function(s) {
+        if (s.statut === 'obtenu') finProjet += parseFloat(s.montant) || 0;
+      });
+      p.fin_public = finProjet;
+      totalFin += finProjet;
+    } else {
+      totalFin += p.fin_public || 0;
+    }
+  });
+
   document.getElementById('kpi-fin').innerHTML = formatMontant(totalFin) + ' <span>€</span>';
   const totalLevee = projets.reduce((a, p) => a + p.levee, 0);
   document.getElementById('kpi-levee').innerHTML = formatMontant(totalLevee) + ' <span>€</span>';
 }
 
+function formatMontantComplet(val) {
+  if (!val || val === 0) return '—';
+  var n = Math.round(val);
+  var str = n.toString();
+  var result = '';
+  var mod = str.length % 3;
+  for (var i = 0; i < str.length; i++) {
+    if (i !== 0 && i % 3 === mod) result += '\u202F';
+    result += str[i];
+  }
+  return result + '\u202F€';
+}
+   
 function formatMontant(val) {
   if (val === 0) return '—';
   if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
@@ -5018,14 +5062,16 @@ function renderFicheProjet(p) {
 // ============================================================
 
 function goToStep(n) {
-  // Peupler les selects au premier passage
+// ✅ B1 — Peupler à chaque appel pour gérer le chargement async du Sheet
   var selectConsultant = document.getElementById('proj-consultant');
-  if (selectConsultant && selectConsultant.options.length <= 1 && CONSULTANTS.length > 0) {
+  if (selectConsultant && CONSULTANTS.length > 0) {
+    var valActuelle = selectConsultant.value;
     selectConsultant.innerHTML = '<option value="">Sélectionner...</option>';
     CONSULTANTS.forEach(function(c) {
       var opt = document.createElement('option');
       opt.value = c.id;
       opt.textContent = c.nom;
+      if (c.id === valActuelle) opt.selected = true;
       selectConsultant.appendChild(opt);
     });
   }
@@ -5094,26 +5140,44 @@ function initEtape2() {
     + '</div>';
   }).join('');
 
-  // Peupler besoins détectés depuis le Sheet
+// ✅ B3 — Fallback sur constantes statiques si le Sheet n'est pas encore chargé
+  var besoinsDepenses = (window._BESOINS_DEPENSES && window._BESOINS_DEPENSES.length > 0)
+    ? window._BESOINS_DEPENSES
+    : (isB ? BESOINS_DEPENSES_B : BESOINS_DEPENSES_A);
+
+  var besoinsThematiques = (window._BESOINS_THEMATIQUES && window._BESOINS_THEMATIQUES.length > 0)
+    ? window._BESOINS_THEMATIQUES
+    : (isB ? BESOINS_THEMATIQUES_B : BESOINS_THEMATIQUES_A);
+
   var depEl = document.getElementById('besoins-depenses');
-  var themEl = document.getElementById('besoins-thematiques');
-  if (depEl && window._BESOINS_DEPENSES && window._BESOINS_DEPENSES.length > 0) {
-    depEl.innerHTML = window._BESOINS_DEPENSES.map(function(b) {
-      return '<label class="besoin-item" onclick="toggleBesoin(this)">'
-        + '<div class="besoin-check"></div>'
-        + '<span>' + (b['Libelle'] || b['Label'] || JSON.stringify(b)) + '</span>'
-      + '</label>';
-    }).join('');
+  if (depEl) {
+    depEl.innerHTML = '';
+    besoinsDepenses.forEach(function(b) {
+      var label = (typeof b === 'string') ? b : (b['Libelle'] || b['Label'] || '');
+      if (!label) return;
+      var item = document.createElement('label');
+      item.className = 'besoin-item';
+      item.setAttribute('onclick', 'toggleBesoin(this)');
+      item.innerHTML = '<div class="besoin-check"></div><span class="besoin-label">' + label + '</span>';
+      depEl.appendChild(item);
+    });
   }
-  if (themEl && window._BESOINS_THEMATIQUES && window._BESOINS_THEMATIQUES.length > 0) {
-    themEl.innerHTML = window._BESOINS_THEMATIQUES.map(function(b) {
-      return '<label class="besoin-item" onclick="toggleBesoin(this)">'
-        + '<div class="besoin-check"></div>'
-        + '<span>' + (b['Libelle'] || b['Label'] || JSON.stringify(b)) + '</span>'
-      + '</label>';
-    }).join('');
+
+  var themEl = document.getElementById('besoins-thematiques');
+  if (themEl) {
+    themEl.innerHTML = '';
+    besoinsThematiques.forEach(function(b) {
+      var label = (typeof b === 'string') ? b : (b['Libelle'] || b['Label'] || '');
+      if (!label) return;
+      var item = document.createElement('label');
+      item.className = 'besoin-item';
+      item.setAttribute('onclick', 'toggleBesoin(this)');
+      item.innerHTML = '<div class="besoin-check"></div><span class="besoin-label">' + label + '</span>';
+      themEl.appendChild(item);
+    });
   }
 }
+   
 function hexToRgba(hex, alpha) {
   const r = parseInt(hex.slice(1,3), 16);
   const g = parseInt(hex.slice(3,5), 16);
@@ -5336,7 +5400,7 @@ function creerProjet() {
     adherent: document.querySelector('.checkbox-item.checked') !== null,
     sessions: [premiereSession],
     actionsAPreparer: [],
-    phaseManuelle: false,
+    phaseManuelle: true,
   };
 
   projets.unshift(newProjet);
