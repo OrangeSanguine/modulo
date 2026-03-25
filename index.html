@@ -6974,6 +6974,7 @@ function repondreDecouverte(axeId, val) {
     var nouvellePhase = calculerPhaseDepuisScore(score);
     if (nouvellePhase !== currentProjet.phase) {
       currentProjet.phase = nouvellePhase;
+      currentProjet._filtresFinancements = null;
     }
   }
   var scrollY = window.scrollY;
@@ -6997,7 +6998,11 @@ function enregistrerDiagDecouverte() {
 
   // Mettre à jour la phase du projet
   if (!currentProjet.phaseManuelle) {
-    currentProjet.phase = phase;
+    if (currentProjet.phase !== phase) {
+      currentProjet.phase = phase;
+      // Réinitialiser les filtres de financement pour refléter la nouvelle phase
+      currentProjet._filtresFinancements = null;
+    }
   }
   // Mettre à jour les besoins
   currentProjet.besoins = calculerBesoinsDepuisReponses(reponses);
