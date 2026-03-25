@@ -6142,8 +6142,33 @@ function setFiltreFin(cle, valeur) {
   if (!currentProjet) return;
   if (!currentProjet._filtresFinancements) currentProjet._filtresFinancements = {};
   currentProjet._filtresFinancements[cle] = valeur;
+  
+  // Pour les champs texte, ne pas re-rendre le bandeau — juste filtrer les résultats
+  var champsTexte = ['recherche', 'montant'];
+  if (champsTexte.indexOf(cle) !== -1) {
+    var scrollY = window.scrollY;
+    renderFinancements(currentProjet);
+    window.scrollTo(0, scrollY);
+    // Restaurer le focus sur le champ
+    setTimeout(function() {
+      var panel = document.getElementById('fin-bandeau-panel');
+      var arrow = document.getElementById('fin-bandeau-arrow');
+      if (panel) panel.style.display = 'block';
+      if (arrow) arrow.style.transform = 'rotate(180deg)';
+      // Refocus sur le champ de recherche
+      if (cle === 'recherche') {
+        var input = document.querySelector('#fin-bandeau-panel input[type="text"]');
+        if (input) {
+          input.focus();
+          var len = input.value.length;
+          input.setSelectionRange(len, len);
+        }
+      }
+    }, 10);
+    return;
+  }
+
   renderFinancements(currentProjet);
-  // Rouvrir le panneau après re-render
   setTimeout(function() {
     var panel = document.getElementById('fin-bandeau-panel');
     var arrow = document.getElementById('fin-bandeau-arrow');
