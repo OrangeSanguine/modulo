@@ -4856,6 +4856,31 @@ function renderFicheLayout(projet) {
       if (r.categorie !== 'Acteur') return false;
       if (r.actif === false) return false;
       if (!phaseMatch(r.phases || '', projet.phase || 1)) return false;
+
+      // ✅ Filtre filière — "Toutes" = toujours affiché
+      var filiereActeur = (r._raw && r._raw['Filieres'] ? r._raw['Filieres'] : 'Toutes');
+      if (filiereActeur && filiereActeur.toLowerCase() !== 'toutes') {
+        var filiereProjet = (projet.filiere || '').toLowerCase();
+        var FILIERE_MAP = {
+          'filière agroalimentaire':    ['agroalimentaire'],
+          'filière naval-nautisme':     ['maritime', 'naval'],
+          'filière numérique':          ['numérique'],
+          'filière santé':              ['santé'],
+          'filière défense et sécurité':['cybersécurité', 'industrie'],
+          'filière biotechnologies':    ['agroalimentaire', 'santé'],
+          'filière énergies marines renouvelables': ['maritime', 'naval'],
+          'filière véhicules et mobilités': ['mobilité', 'industrie'],
+        };
+        var motsFiliere = FILIERE_MAP[filiereProjet] || [];
+        if (motsFiliere.length > 0) {
+          var filiereActeurLower = filiereActeur.toLowerCase();
+          var match = motsFiliere.some(function(mot) {
+            return filiereActeurLower.includes(mot);
+          });
+          if (!match) return false;
+        }
+      }
+
       return true;
     }).map(function(r) {
       var besoinsDisp = (r._raw && r._raw['Besoins'] ? r._raw['Besoins'].toLowerCase() : '');
