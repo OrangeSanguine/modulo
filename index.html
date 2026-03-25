@@ -4890,12 +4890,29 @@ function renderFicheLayout(projet) {
         if (ok) score += 2;
       }
       if ((r.priorite || 2) === 1) score += 1;
+      // +2 si filière exactement correspondante
+      var filiereActeurScore = (r._raw && r._raw['Filieres'] ? r._raw['Filieres'].toLowerCase() : '');
+      if (filiereActeurScore && filiereActeurScore !== 'toutes') {
+        var filiereProjetScore = (projet.filiere || '').toLowerCase();
+        var FILIERE_MAP_SCORE = {
+          'filière numérique':          ['numérique'],
+          'filière santé':              ['santé'],
+          'filière naval-nautisme':     ['maritime', 'naval'],
+          'filière agroalimentaire':    ['agroalimentaire'],
+          'filière défense et sécurité':['cybersécurité'],
+          'filière biotechnologies':    ['agroalimentaire', 'santé'],
+          'filière énergies marines renouvelables': ['maritime', 'naval'],
+          'filière véhicules et mobilités': ['mobilité', 'industrie'],
+        };
+        var mots = FILIERE_MAP_SCORE[filiereProjetScore] || [];
+        if (mots.some(function(m) { return filiereActeurScore.includes(m); })) score += 2;
+      }
       r._score = score;
       return r;
     }).sort(function(a, b) {
       if (b._score !== a._score) return b._score - a._score;
       return (a.priorite || 2) - (b.priorite || 2);
-    }).slice(0, 6);
+    }).slice(0, 10);
 
     if (countActeurs) countActeurs.textContent = acteurs.length;
     if (acteurs.length === 0) {
