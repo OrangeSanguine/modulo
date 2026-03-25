@@ -5173,63 +5173,134 @@ function initEtape2() {
   var type = newProjData.type;
   var isB = type === 'plus3';
   var isEntreprise = type === 'moins3' || type === 'plus3';
-  var phases = isB ? PHASES_B : PHASES_A;
 
   // Afficher/masquer section entreprise
   var condEntreprise = document.getElementById('cond-entreprise');
   if (condEntreprise) condEntreprise.style.display = isEntreprise ? 'block' : 'none';
 
-  // Peupler phases
-  document.getElementById('phases-list').innerHTML = phases.map(function(p) {
-    var color = PHASE_COLORS[p.num];
-    var trlSpan = p.trl ? '<span style="font-size:11px;color:var(--gris-meta);font-weight:400;margin-left:4px;">' + p.trl + '</span>' : '';
-    return '<div class="fourchette-item phase-item" data-phase="' + p.num + '" data-color="' + color + '" onclick="selectPhaseItem(this, \'' + p.num + '\')">'
-      + '<div class="fourchette-radio phase-radio" id="radio-phase-' + p.num + '"></div>'
-      + '<div>'
-        + '<div class="fourchette-label" style="display:flex;align-items:center;gap:8px;">'
-          + '<span style="width:10px;height:10px;border-radius:50%;background:' + color + ';display:inline-block;flex-shrink:0;"></span>'
-          + 'Phase ' + p.num + ' — ' + p.label + ' ' + trlSpan
-        + '</div>'
-        + '<div style="font-size:12px;color:var(--gris-texte);margin-top:4px;margin-left:18px;">' + p.desc + '</div>'
-      + '</div>'
-    + '</div>';
-  }).join('');
+  // Masquer le sélecteur de phase manuel — sera calculé depuis le diagnostic
+  var phasesList = document.getElementById('phases-list');
+  if (phasesList) {
+    phasesList.innerHTML = '<div style="background:rgba(252,194,0,0.08);border:1px solid rgba(252,194,0,0.3);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#a07800;">'
+      + '⚡ La phase sera calculée automatiquement depuis le diagnostic de maturité ci-dessous.'
+      + '</div>';
+  }
 
-// ✅ B3 — Fallback sur constantes statiques si le Sheet n'est pas encore chargé
-  var besoinsDepenses = (window._BESOINS_DEPENSES && window._BESOINS_DEPENSES.length > 0)
-    ? window._BESOINS_DEPENSES
-    : (isB ? BESOINS_DEPENSES_B : BESOINS_DEPENSES_A);
-
-  var besoinsThematiques = (window._BESOINS_THEMATIQUES && window._BESOINS_THEMATIQUES.length > 0)
-    ? window._BESOINS_THEMATIQUES
-    : (isB ? BESOINS_THEMATIQUES_B : BESOINS_THEMATIQUES_A);
-
-  var depEl = document.getElementById('besoins-depenses');
-  if (depEl) {
-    depEl.innerHTML = '';
-    besoinsDepenses.forEach(function(b) {
-      var label = (typeof b === 'string') ? b : (b['Libelle'] || b['Label'] || '');
-      if (!label) return;
-      var item = document.createElement('label');
-      item.className = 'besoin-item';
-      item.setAttribute('onclick', 'toggleBesoin(this)');
-      item.innerHTML = '<div class="besoin-check"></div><span class="besoin-label">' + label + '</span>';
-      depEl.appendChild(item);
+  // Peupler DIS
+  var selDis = document.getElementById('proj-dis');
+  if (selDis && selDis.options.length <= 1 && window._DIS_MAP) {
+    selDis.innerHTML = '<option value="">Sélectionner...</option>';
+    Object.keys(window._DIS_MAP).forEach(function(did) {
+      var opt = document.createElement('option');
+      opt.value = did;
+      opt.textContent = window._DIS_MAP[did].label;
+      selDis.appendChild(opt);
     });
   }
 
+  // Diagnostic découverte — 6 axes
+  var depEl = document.getElementById('besoins-depenses');
   var themEl = document.getElementById('besoins-thematiques');
-  if (themEl) {
-    themEl.innerHTML = '';
-    besoinsThematiques.forEach(function(b) {
-      var label = (typeof b === 'string') ? b : (b['Libelle'] || b['Label'] || '');
-      if (!label) return;
-      var item = document.createElement('label');
-      item.className = 'besoin-item';
-      item.setAttribute('onclick', 'toggleBesoin(this)');
-      item.innerHTML = '<div class="besoin-check"></div><span class="besoin-label">' + label + '</span>';
-      themEl.appendChild(item);
+
+  if (depEl) {
+    depEl.innerHTML = '';
+    if (!newProjData._diagDecouverte) newProjData._diagDecouverte = {};
+
+    DIAG_DECOUVERTE_AXES.forEach(function(axe, i) {
+      var niveaux = DIAG_DECOUVERTE_NIVEAUX;
+      var valActuelle = newProjData._diagDecouverte[axe.id] || null;
+
+      var axeEl = document.createElement('div');
+      axeEl.style.cssText = 'margin-bottom:16px;background:var(--blanc);border:1.5px solid var(--gris-moyen);border-radius:var(--radius);padding:14px 16px;';
+
+      var headerEl = document.createElement('div');
+      headerEl.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:10px;';
+      headerEl.innerHTML = '<div style="width:10px;height:10px;border-radius:50%;background:' + axe.color + ';flex-shrink:0;"></div>'
+        + '<div style="font-size:13px;font-weight:700;color:var(--noir);">' + axe.label + '</div>';
+      axeEl.appendChild(headerEl);
+
+      var niveauxEl = document.createElement('div');
+      niveauxEl.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+
+      niveaux.forEach(function(n) {
+        var btnEl = document.createElement('div');
+        var isSelected = valActuelle === n.val;
+        btnEl.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:var(--radius-sm);border:1.5px solid ' + (isSelected ? axe.color : 'var(--gris-moyen)') + ';background:' + (isSelected ? axe.color + '15' : 'var(--gris-clair)') + ';cursor:pointer;transition:all 0.15s;';
+
+        var radioEl = document.createElement('div');
+        radioEl.style.cssText = 'width:16px;height:16px;border-radius:50%;border:2px solid ' + (isSelected ? axe.color : 'var(--gris-moyen)') + ';flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;background:' + (isSelected ? axe.color : 'transparent') + ';';
+        if (isSelected) {
+          var dot = document.createElement('div');
+          dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:var(--blanc);';
+          radioEl.appendChild(dot);
+        }
+
+        var labelEl = document.createElement('div');
+        labelEl.style.cssText = 'font-size:12px;font-weight:' + (isSelected ? '600' : '400') + ';color:' + (isSelected ? axe.color : 'var(--gris-texte)') + ';line-height:1.4;';
+        labelEl.textContent = 'Niveau ' + n.val + ' — ' + n.labels[i];
+
+        btnEl.appendChild(radioEl);
+        btnEl.appendChild(labelEl);
+
+        btnEl.setAttribute('data-axe', axe.id);
+        btnEl.setAttribute('data-val', n.val);
+        btnEl.onclick = function() { selectionnerNiveauDecouverte(axe.id, n.val, axe.color); };
+
+        niveauxEl.appendChild(btnEl);
+      });
+
+      axeEl.appendChild(niveauxEl);
+      depEl.appendChild(axeEl);
     });
+  }
+
+  // Masquer la section thématiques — remplacée par le diagnostic
+  if (themEl) {
+    var parentThem = themEl.parentElement;
+    if (parentThem) parentThem.style.display = 'none';
+  }
+
+  // Afficher le score en temps réel
+  var scoreEl = document.getElementById('diag-decouverte-score');
+  if (!scoreEl && depEl) {
+    var scoreDiv = document.createElement('div');
+    scoreDiv.id = 'diag-decouverte-score';
+    scoreDiv.style.cssText = 'margin-top:16px;background:var(--blanc);border:1px solid var(--gris-moyen);border-radius:var(--radius);padding:14px 16px;display:none;';
+    depEl.parentElement.appendChild(scoreDiv);
+  }
+}
+
+function selectionnerNiveauDecouverte(axeId, val, color) {
+  if (!newProjData._diagDecouverte) newProjData._diagDecouverte = {};
+  newProjData._diagDecouverte[axeId] = val;
+
+  // Recalculer le score et la phase
+  var score = calculerScoreDecouverte(newProjData._diagDecouverte);
+  var phase = calculerPhaseDepuisScore(score);
+  newProjData.phase = String(phase);
+
+  // Mettre à jour l'affichage
+  initEtape2();
+
+  // Afficher le score
+  var scoreEl = document.getElementById('diag-decouverte-score');
+  var nbReponses = Object.keys(newProjData._diagDecouverte).length;
+  if (scoreEl && nbReponses > 0) {
+    var pct = Math.round(score * 100);
+    var phaseColor = PHASE_COLORS[phase] || '#FCC200';
+    var niveauLabel = phase === 1 ? 'Idéation' : phase === 2 ? 'Prototypage' : phase === 3 ? 'Mise en Marché' : 'Scale-up';
+    scoreEl.style.display = 'block';
+    scoreEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'
+      + '<div style="display:flex;align-items:center;gap:12px;">'
+        + '<div style="font-size:28px;font-weight:900;color:var(--noir);">' + pct + '%</div>'
+        + '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);">Maturité du projet</div>'
+        + '<div style="font-size:12px;color:var(--gris-texte);">' + nbReponses + '/6 axes évalués</div></div>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;background:' + phaseColor + '20;border:1.5px solid ' + phaseColor + '40;border-radius:var(--radius);padding:8px 16px;">'
+        + '<div style="width:10px;height:10px;border-radius:50%;background:' + phaseColor + ';"></div>'
+        + '<div style="font-size:13px;font-weight:700;color:' + phaseColor + ';">Phase ' + phase + ' — ' + niveauLabel + '</div>'
+      + '</div>'
+    + '</div>';
   }
 }
    
@@ -5396,13 +5467,14 @@ function initEtape5() {
 }
 
 function creerProjet() {
-  // Récupérer besoins cochés
-  var besoinsCoches = Array.from(document.querySelectorAll('.besoin-item.selected'))
-    .map(function(el) { return el.querySelector('span') ? el.querySelector('span').textContent.trim() : ''; })
-    .filter(Boolean);
-
+// Récupérer données diagnostic découverte
+  var diagDecouverte = newProjData._diagDecouverte || {};
+  var scoreDecouverte = calculerScoreDecouverte(diagDecouverte);
+  var besoinsCoches = calculerBesoinsDepuisReponses(diagDecouverte);
   var id = 'PRJ' + Date.now().toString().slice(-6);
-  var phase = parseInt(newProjData.phase) || 1;
+  // Phase calculée depuis le diagnostic si rempli, sinon Phase 1 par défaut
+  var nbAxesRemplis = Object.keys(diagDecouverte).length;
+  var phase = nbAxesRemplis >= 3 ? calculerPhaseDepuisScore(scoreDecouverte) : (parseInt(newProjData.phase) || 1);
   var roadmap = newProjData.type === 'plus3' ? 'B' : 'A';
   var jalons_total = roadmap === 'B' ? 23 : 16;
   var dateRdv = document.getElementById('proj-date').value || new Date().toISOString().split('T')[0];
@@ -5455,7 +5527,13 @@ function creerProjet() {
     adherent: document.querySelector('.checkbox-item.checked') !== null,
     sessions: [premiereSession],
     actionsAPreparer: [],
-    phaseManuelle: true,
+     diagDecouverte: {
+      reponses: diagDecouverte,
+      score: scoreDecouverte,
+      statut: nbAxesRemplis === 6 ? 'realise' : (nbAxesRemplis > 0 ? 'en-cours' : 'non-demarre'),
+      date: dateRdv,
+    },
+    phaseManuelle: nbAxesRemplis < 3,
   };
 
   projets.unshift(newProjet);
@@ -6355,7 +6433,102 @@ var DIAG_DIGITAL_AXES = [
   { id: 'innovation',  label: 'Innovation & adaptation',         color: '#33B5A1', questions: ['D11','D12'] },
   { id: 'strategie',   label: 'Stratégie & gouvernance digitale',color: '#5DC4E1', questions: ['D13','D14','D15'] },
 ];
+// ============================================================
+// DIAGNOSTIC DÉCOUVERTE
+// ============================================================
+var DIAG_DECOUVERTE_AXES = [
+  { id: 'valeur',     label: 'Proposition de valeur',                      color: '#FCC200' },
+  { id: 'marche',     label: 'Marché & Traction commerciale',               color: '#E3516D' },
+  { id: 'produit',    label: 'Produit / Service & Industrialisation',       color: '#7687C2' },
+  { id: 'modele',     label: 'Modèle économique & Viabilité financière',    color: '#33B5A1' },
+  { id: 'equipe',     label: 'Organisation & Équipe',                       color: '#5DC4E1' },
+  { id: 'ressources', label: 'Ressources & Besoins technologiques',         color: '#E8A838' },
+];
 
+var DIAG_DECOUVERTE_NIVEAUX = [
+  {
+    val: 1, score: 0.25,
+    labels: [
+      'Problématique en cours de définition, absence de validation clients',
+      'Pas d\'étude de marché, hypothèses non validées ou en cours de validation',
+      'Concept défini mais pas de prototype, faisabilité à démontrer',
+      'Modèle économique à définir ou en cours de définition',
+      'Projet porté par une seule personne ou équipe non structurée',
+      'Besoins non clairement définis, absence de plan de financement structuré',
+    ]
+  },
+  {
+    val: 2, score: 0.5,
+    labels: [
+      'Proposition de valeur structurée, premières validations clients, tests d\'usage en cours',
+      'Segmentation et analyse du marché en cours, premiers prospects identifiés',
+      'POC ou MVP développé, faisabilité technique démontrée',
+      'Modèle testé sur des premiers clients, premières sources de revenus',
+      'Équipe technique initiale constituée avec des compétences encore partielles',
+      'Recherche d\'équipements ou infrastructures adaptées, prototypage en cours',
+    ]
+  },
+  {
+    val: 3, score: 0.75,
+    labels: [
+      'Solution validée sur un marché restreint, différenciation confirmée',
+      'Premiers clients pilotes / premières ventes, retour utilisateur structuré',
+      'Produit/service finalisé, processus d\'industrialisation ou de déploiement validé',
+      'Modèle économique stable, rentabilité en cours de validation',
+      'Équipe opérationnelle avec rôles bien définis, structuration des processus internes',
+      'Infrastructure opérationnelle, développement technologique avancé',
+    ]
+  },
+  {
+    val: 4, score: 1.0,
+    labels: [
+      'Proposition éprouvée, reconnue comme innovante, extension à d\'autres marchés',
+      'Traction forte, marché validé, expansion en cours',
+      'Production à grande échelle, optimisation des coûts, amélioration continue',
+      'Business model éprouvé, CA récurrent, levée de fonds Série A/B ou autofinancement viable',
+      'Organisation optimisée, équipe complète, structuration RH avancée',
+      'Système robuste, process automatisés, innovation continue',
+    ]
+  },
+];
+
+// Mapping score → phase MODULO
+function calculerPhaseDepuisScore(scoreMoyen) {
+  if (scoreMoyen <= 0.37) return 1; // Idéation
+  if (scoreMoyen <= 0.58) return 2; // Prototypage
+  if (scoreMoyen <= 0.79) return 3; // Mise en Marché
+  return 4;                          // Scale-up
+}
+
+// Mapping score → besoins détectés automatiquement
+function calculerBesoinsDepuisReponses(reponses) {
+  var besoins = [];
+  var r = reponses || {};
+  // Proposition de valeur faible → Études & Conseil
+  if (r['valeur'] && r['valeur'] <= 2) besoins.push('Études & conseil / diagnostic');
+  // Produit/service en cours → Prototypage
+  if (r['produit'] && r['produit'] <= 2) besoins.push('Prototypage / POC / MVP');
+  // Modèle économique non défini → Conseil
+  if (r['modele'] && r['modele'] <= 2) besoins.push('Études & conseil / diagnostic');
+  // Ressources → R&D
+  if (r['ressources'] && r['ressources'] <= 3) besoins.push('R&D & développement technologique');
+  // Équipe incomplète → Recrutement
+  if (r['equipe'] && r['equipe'] <= 2) besoins.push('Recrutement & compétences');
+  // Dédupliquer
+  return besoins.filter(function(b, i) { return besoins.indexOf(b) === i; });
+}
+
+function calculerScoreDecouverte(reponses) {
+  var axes = DIAG_DECOUVERTE_AXES;
+  var scores = axes.map(function(axe, i) {
+    var val = reponses[axe.id];
+    var niveau = DIAG_DECOUVERTE_NIVEAUX.find(function(n) { return n.val === val; });
+    return niveau ? niveau.score : null;
+  });
+  var valides = scores.filter(function(s) { return s !== null; });
+  if (valides.length === 0) return 0;
+  return valides.reduce(function(a, b) { return a + b; }, 0) / valides.length;
+}
 var DIAG_DIGITAL_QUESTIONS = [
   { id: 'D01', num: 1, axe: 'Compétences & Talents', axeColor: '#FCC200',
     question: 'Les collaborateurs bénéficient-ils de formations régulières aux outils numériques ?',
