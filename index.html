@@ -7991,7 +7991,8 @@ function appliquerDispositifs() {
   }).filter(function(r){ return r.label; });
   if (mapped.length > 0) {
     // Remplacer les ressources de type Financement par les vraies données
-    var autresRessources = RESSOURCES.filter(function(r) { return r.categorie !== 'Financement'; });
+    var catsARemplacer = ['Financement', 'Concours', 'Appel à projets', 'Prestation', 'Fiscalité'];
+   var autresRessources = RESSOURCES.filter(function(r) { return catsARemplacer.indexOf(r.categorie) === -1; });
     RESSOURCES.length = 0;
     autresRessources.forEach(function(r) { RESSOURCES.push(r); });
     mapped.forEach(function(r) { RESSOURCES.push(r); });
