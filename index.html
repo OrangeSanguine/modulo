@@ -4856,15 +4856,21 @@ function renderFicheLayout(projet) {
       if (r.categorie !== 'Acteur') return false;
       if (r.actif === false) return false;
       if (!phaseMatch(r.phases || '', projet.phase || 1)) return false;
-      // Filtre besoins si renseignés
-      if (besoins.length > 0 && r._raw && r._raw['Besoins']) {
-        var b = (r._raw['Besoins'] || '').toLowerCase();
-        if (b && !b.includes('tous')) {
-          return besoins.some(function(besoin){ return b.includes(besoin.toLowerCase()); });
-        }
-      }
       return true;
-    }).sort(function(a,b){ return (a.priorite||2) - (b.priorite||2); }).slice(0, 6);
+    }).map(function(r) {
+      var besoinsDisp = (r._raw && r._raw['Besoins'] ? r._raw['Besoins'].toLowerCase() : '');
+      var score = 0;
+      if (besoins.length > 0 && besoinsDisp) {
+        var ok = besoins.some(function(b) { return besoinsDisp.includes(b.toLowerCase()); });
+        if (ok) score += 2;
+      }
+      if ((r.priorite || 2) === 1) score += 1;
+      r._score = score;
+      return r;
+    }).sort(function(a, b) {
+      if (b._score !== a._score) return b._score - a._score;
+      return (a.priorite || 2) - (b.priorite || 2);
+    }).slice(0, 6);
 
     if (countActeurs) countActeurs.textContent = acteurs.length;
     if (acteurs.length === 0) {
