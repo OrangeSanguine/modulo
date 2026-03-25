@@ -4813,15 +4813,21 @@ function renderFicheLayout(projet) {
       if (r.categorie !== 'Outil') return false;
       if (r.actif === false) return false;
       if (!phaseMatch(r.phases || '', projet.phase || 1)) return false;
-      // Filtre besoins si renseignés
-      if (besoins.length > 0 && r._raw && r._raw['Besoins']) {
-        var b = (r._raw['Besoins'] || '').toLowerCase();
-        if (b && !b.includes('tous')) {
-          return besoins.some(function(besoin){ return b.includes(besoin.toLowerCase()); });
-        }
-      }
       return true;
-    }).sort(function(a,b){ return (a.priorite||2) - (b.priorite||2); }).slice(0, 6);
+    }).map(function(r) {
+      var besoinsDisp = (r._raw && r._raw['Besoins'] ? r._raw['Besoins'].toLowerCase() : '');
+      var score = 0;
+      if (besoins.length > 0 && besoinsDisp) {
+        var ok = besoins.some(function(b) { return besoinsDisp.includes(b.toLowerCase()); });
+        if (ok) score += 2;
+      }
+      if ((r.priorite || 2) === 1) score += 1;
+      r._score = score;
+      return r;
+    }).sort(function(a, b) {
+      if (b._score !== a._score) return b._score - a._score;
+      return (a.priorite || 2) - (b.priorite || 2);
+    }).slice(0, 6);
 
     if (countOutils) countOutils.textContent = outils.length;
     if (outils.length === 0) {
@@ -5674,8 +5680,14 @@ function renderFinancements(projet) {
 
         var dejaEnSuivi = projet.suiviFinancements.find(function(s){ return s.id === d.id; });
 
-        return '<div class="fin-card">'
-          + '<div class="fin-card-nom" style="margin-bottom:6px;">' + d.label + '</div>'
+var badgeRecommande = d._score >= 2
+  ? '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(252,194,0,0.15);color:#a07800;border:1px solid rgba(252,194,0,0.3);margin-left:6px;">⭐ Recommandé</span>'
+  : '';
+var badgeDeeptech = (d._raw && (d._raw['Deeptech'] || '').toLowerCase() === 'oui')
+  ? '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(118,135,194,0.12);color:var(--violet);border:1px solid rgba(118,135,194,0.3);margin-left:6px;">⚡ Deeptech</span>'
+  : '';
+return '<div class="fin-card">'
+          + '<div class="fin-card-nom" style="margin-bottom:6px;">' + d.label + badgeRecommande + badgeDeeptech + '</div>'
           + '<div class="fin-card-meta">'
             + (modalite ? '<span class="fin-card-type ' + typeClass + '">' + modalite + '</span>' : '')
             + (montantStr ? '<span class="fin-meta-pill montant">' + montantStr + '</span>' : '')
