@@ -5496,7 +5496,8 @@ var fl = projet._filtresFinancements || {};
   var typeProjet = fl.type || projet.type || 'porteur';
   var disProjets = (fl.dis || projet.dis || '').toLowerCase();
   var montantProjet = fl.montant || projet._montantFiltreFinancements || null;
-  var besoinsProjet = fl.besoins !== undefined ? fl.besoins : (projet.besoins || []);
+  // Besoins : uniquement ceux cochés manuellement dans le bandeau, jamais auto
+  var besoinsProjet = (fl.besoins !== undefined) ? fl.besoins : [];
 
   // Mapper type projet → labels bénéficiaires Sheet
   var benefLabels = [];
@@ -5760,17 +5761,6 @@ var fl = projet._filtresFinancements || {};
             + ['Régional','National','Européen'].map(function(n) {
                 var sel = filtresLocaux.niveau === n;
                 return '<button onclick="setFiltreFin(\'niveau\',\'' + n + '\')" style="font-family:var(--font);font-size:11px;font-weight:' + (sel?'700':'500') + ';padding:3px 10px;border-radius:20px;border:1.5px solid ' + (sel?'var(--noir)':'var(--gris-moyen)') + ';background:' + (sel?'var(--noir)':'var(--blanc)') + ';color:' + (sel?'var(--blanc)':'var(--gris-texte)') + ';cursor:pointer;">' + n + '</button>';
-              }).join('')
-          + '</div>'
-        + '</div>'
-
-        // Type financement
-        + '<div style="grid-column:1/-1;">'
-          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Type de financement</div>'
-          + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
-            + modalites.map(function(m) {
-                var sel = filtresLocaux.modalite === m;
-                return '<button onclick="setFiltreFin(\'modalite\',\'' + m.replace(/'/g,"\\'") + '\')" style="font-family:var(--font);font-size:11px;font-weight:' + (sel?'700':'500') + ';padding:3px 10px;border-radius:20px;border:1.5px solid ' + (sel?'var(--noir)':'var(--gris-moyen)') + ';background:' + (sel?'var(--noir)':'var(--blanc)') + ';color:' + (sel?'var(--blanc)':'var(--gris-texte)') + ';cursor:pointer;">' + m + '</button>';
               }).join('')
           + '</div>'
         + '</div>'
