@@ -5640,6 +5640,17 @@ var fl = projet._filtresFinancements || {};
       if (!besoinOk2) return false;
     }
 
+    // Filtre Catégorie
+    if (fl2.categorie && r.categorie !== fl2.categorie) return false;
+     // Filtre recherche texte
+    if (fl2.recherche && fl2.recherche.trim()) {
+      var q = fl2.recherche.toLowerCase().trim();
+      var nomDisp = (r.label || '').toLowerCase();
+      var resumeDisp = (r._raw && r._raw['Resume'] ? r._raw['Resume'].toLowerCase() : '');
+      var besoinsDisp4 = (r._raw && r._raw['Besoins'] ? r._raw['Besoins'].toLowerCase() : '');
+      if (!nomDisp.includes(q) && !resumeDisp.includes(q) && !besoinsDisp4.includes(q)) return false;
+    }
+
     return true;
   }).map(function(r) {
     // Score de pertinence
@@ -5717,7 +5728,9 @@ var fl = projet._filtresFinancements || {};
     dis: disProjets,
     taille: taille,
     cumulable: '',
-    financeur: ''
+    categorie: '', 
+    financeur: '',
+   recherche: ''
   };
   projet._filtresFinancements = filtresLocaux;
 
@@ -5768,6 +5781,17 @@ var fl = projet._filtresFinancements || {};
 
     // ── Panneau dépliable ──
     + '<div id="fin-bandeau-panel" style="display:none;border-top:1px solid var(--gris-moyen);padding:16px 18px;">'
+     // Recherche texte
+        + '<div style="margin-bottom:16px;">'
+          + '<div style="position:relative;">'
+            + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--gris-texte);" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>'
+            + '<input type="text" placeholder="Rechercher un dispositif..." value="' + (filtresLocaux.recherche || '') + '" '
+              + 'oninput="setFiltreFin(\'recherche\',this.value)" '
+              + 'style="font-family:var(--font);font-size:13px;color:var(--noir);border:1.5px solid var(--gris-moyen);border-radius:var(--radius);padding:9px 12px 9px 34px;width:100%;outline:none;box-sizing:border-box;" '
+              + 'onfocus="this.style.borderColor=\'var(--jaune)\'" '
+              + 'onblur="this.style.borderColor=\'var(--gris-moyen)\'">'
+          + '</div>'
+        + '</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;">'
 
         // Phase
@@ -5810,6 +5834,16 @@ var fl = projet._filtresFinancements || {};
             + ['Régional','National','Européen'].map(function(n) {
                 var sel = filtresLocaux.niveau === n;
                 return '<button onclick="setFiltreFin(\'niveau\',\'' + n + '\')" style="font-family:var(--font);font-size:11px;font-weight:' + (sel?'700':'500') + ';padding:3px 10px;border-radius:20px;border:1.5px solid ' + (sel?'var(--noir)':'var(--gris-moyen)') + ';background:' + (sel?'var(--noir)':'var(--blanc)') + ';color:' + (sel?'var(--blanc)':'var(--gris-texte)') + ';cursor:pointer;">' + n + '</button>';
+              }).join('')
+          + '</div>'
+        + '</div>'
+     // Catégorie
+        + '<div>'
+          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);margin-bottom:6px;">Catégorie</div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+            + ['Financement','Concours','Appel à projets','Prestation','Fiscalité'].map(function(c) {
+                var sel = filtresLocaux.categorie === c;
+                return '<button onclick="setFiltreFin(\'categorie\',\'' + c.replace(/'/g,"\\'") + '\')" style="font-family:var(--font);font-size:11px;font-weight:' + (sel?'700':'500') + ';padding:3px 10px;border-radius:20px;border:1.5px solid ' + (sel?'var(--noir)':'var(--gris-moyen)') + ';background:' + (sel?'var(--noir)':'var(--blanc)') + ';color:' + (sel?'var(--blanc)':'var(--gris-texte)') + ';cursor:pointer;">' + c + '</button>';
               }).join('')
           + '</div>'
         + '</div>'
