@@ -7069,7 +7069,7 @@ function genererLivrableDecouverte() {
     var prochainNiveau = item.val < 4 ? DIAG_DECOUVERTE_NIVEAUX.find(function(n) { return n.val === item.val + 1; }) : null;
     return '<div style="margin-bottom:12px;padding:12px 16px;border-left:4px solid ' + item.axe.color + ';background:' + item.axe.color + '10;border-radius:0 var(--radius) var(--radius) 0;">'
       + '<div style="font-size:11pt;font-weight:700;color:#1A1A1A;margin-bottom:4px;">' + item.axe.label + ' — Niveau ' + item.val + '/4</div>'
-      + (prochainNiveau ? '<div style="font-size:10pt;color:#444;">→ Objectif : ' + prochainNiveau.labels[item.index] + '</div>' : '<div style="font-size:10pt;color:#33B5A1;font-weight:600;">✓ Niveau maximum atteint</div>')
+      + (prochainNiveau ? '<div style="font-size:10pt;color:#444;">→ Prochaine étape : ' + prochainNiveau.labels[item.index] + '</div>' : '<div style="font-size:10pt;color:#33B5A1;font-weight:600;">✓ Niveau maximum atteint</div>')
     + '</div>';
   }).join('');
 
@@ -7136,12 +7136,6 @@ function genererLivrableDecouverte() {
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;">'
       + besoins.map(function(b) { return '<span style="background:#FCC20015;border:1px solid #FCC20060;border-radius:20px;padding:4px 12px;font-size:10pt;font-weight:600;color:#a07800;">' + b + '</span>'; }).join('')
       + '</div>' : '')
-
-    // Financements recommandés
-    + '<h2>Financements recommandés</h2>'
-    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:32px;">'
-    + financementsReco.map(function(f) { return '<span style="background:#F4F4F2;border:1px solid #E0E0DC;border-radius:20px;padding:4px 12px;font-size:10pt;font-weight:600;color:#1A1A1A;">' + f + '</span>'; }).join('')
-    + '</div>'
 
     + '<div class="no-print" style="margin-top:24px;text-align:center;padding:24px;border-top:1px solid #E0E0DC;">'
       + '<button onclick="window.print()" style="font-family:Arial;font-size:13px;font-weight:700;color:#1A1A1A;background:#FCC200;border:none;border-radius:8px;padding:12px 32px;cursor:pointer;">🖨 Imprimer / Exporter PDF</button>'
