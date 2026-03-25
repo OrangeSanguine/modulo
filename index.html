@@ -6276,6 +6276,163 @@ const DIAG_PI_AXES = [
   { id: 'veille',       label: 'Veille & anticipation',     color: '#5DC4E1', piliers: ['PI07'] },
 ];
 
+// ============================================================
+// DIAGNOSTIC STRATÉGIE DIGITALE
+// ============================================================
+var DIAG_DIGITAL_AXES = [
+  { id: 'competences', label: 'Compétences & Talents',           color: '#FCC200', questions: ['D01','D02','D03'] },
+  { id: 'donnees',     label: 'Données, outils & cybersécurité', color: '#7687C2', questions: ['D04','D05','D06','D07','D08','D09','D10'] },
+  { id: 'innovation',  label: 'Innovation & adaptation',         color: '#33B5A1', questions: ['D11','D12'] },
+  { id: 'strategie',   label: 'Stratégie & gouvernance digitale',color: '#5DC4E1', questions: ['D13','D14','D15'] },
+];
+
+var DIAG_DIGITAL_QUESTIONS = [
+  { id: 'D01', num: 1, axe: 'Compétences & Talents', axeColor: '#FCC200',
+    question: 'Les collaborateurs bénéficient-ils de formations régulières aux outils numériques ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Identifier les compétences manquantes et lancer une première formation ciblée (CNAM, OPCO).' },
+      { val: 1, label: 'En progression', reco: 'Structurer un plan de formation annuel avec des indicateurs de montée en compétences.' },
+      { val: 2, label: 'Avancé', reco: 'Mettre en place une veille sur les nouvelles compétences numériques et anticiper les besoins futurs.' },
+    ]
+  },
+  { id: 'D02', num: 2, axe: 'Compétences & Talents', axeColor: '#FCC200',
+    question: 'Des actions de sensibilisation à la cybersécurité sont-elles mises en place ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Organiser une première session de sensibilisation cyber (guide ANSSI, kit SecNumacadémie).' },
+      { val: 1, label: 'En progression', reco: 'Déployer des formations régulières et tester la vigilance des équipes (simulations de phishing).' },
+      { val: 2, label: 'Avancé', reco: 'Intégrer la cybersécurité dans la culture d\'entreprise et former des référents internes.' },
+    ]
+  },
+  { id: 'D03', num: 3, axe: 'Compétences & Talents', axeColor: '#FCC200',
+    question: 'L\'organisation sait-elle attirer et fidéliser des talents numériques grâce aux réseaux de l\'écosystème breton ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Se connecter à French Tech Bretagne Sud, ENSIBS, ICAM pour identifier les viviers de talents.' },
+      { val: 1, label: 'En progression', reco: 'Développer une marque employeur digitale et proposer des stages / alternances en lien avec les écoles.' },
+      { val: 2, label: 'Avancé', reco: 'Co-construire des formations avec les établissements et participer aux événements de recrutement numériques.' },
+    ]
+  },
+  { id: 'D04', num: 4, axe: 'Données, outils & cybersécurité', axeColor: '#7687C2',
+    question: 'L\'entreprise gère-t-elle efficacement ses données (qualité, RGPD, gouvernance) ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Nommer un référent RGPD et réaliser un premier audit des données collectées.' },
+      { val: 1, label: 'En progression', reco: 'Mettre en place une politique de gestion des données et former les équipes au RGPD.' },
+      { val: 2, label: 'Avancé', reco: 'Exploiter les données comme actif stratégique et développer une gouvernance data formalisée.' },
+    ]
+  },
+  { id: 'D05', num: 5, axe: 'Données, outils & cybersécurité', axeColor: '#7687C2',
+    question: 'Les logiciels et outils SaaS utilisés sont-ils interconnectés pour fluidifier les processus ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Cartographier les outils existants et identifier les redondances et les manques.' },
+      { val: 1, label: 'En progression', reco: 'Déployer des intégrations entre outils clés (CRM, ERP, comptabilité) via des connecteurs ou API.' },
+      { val: 2, label: 'Avancé', reco: 'Automatiser les flux de données entre systèmes et mesurer les gains de productivité.' },
+    ]
+  },
+  { id: 'D06', num: 6, axe: 'Données, outils & cybersécurité', axeColor: '#7687C2',
+    question: 'Un plan de cybersécurité est-il en place (sauvegardes, protection des systèmes) ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'RDV Expert Cyber via EDIH, mettre en place des sauvegardes automatiques, consulter le guide ANSSI.' },
+      { val: 1, label: 'En progression', reco: 'Déployer une politique de sécurité formalisée et réaliser un audit de vulnérabilités.' },
+      { val: 2, label: 'Avancé', reco: 'Mettre en place un plan de continuité d\'activité et tester régulièrement la résilience des systèmes.' },
+    ]
+  },
+  { id: 'D07', num: 7, axe: 'Données, outils & cybersécurité', axeColor: '#7687C2',
+    question: 'Les données sont-elles exploitées pour améliorer la prise de décision (tableaux de bord, IA, analytics) ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Mettre en place des tableaux de bord simples sur les indicateurs clés de l\'activité.' },
+      { val: 1, label: 'En progression', reco: 'Déployer des outils d\'analyse avancée et former les décideurs à la lecture des données.' },
+      { val: 2, label: 'Avancé', reco: 'Explorer les usages IA pour la prédiction et l\'optimisation — contacter GorIA via EDIH.' },
+    ]
+  },
+  { id: 'D08', num: 8, axe: 'Données, outils & cybersécurité', axeColor: '#7687C2',
+    question: 'La présence digitale de l\'entreprise (site web, SEO, réseaux sociaux) est-elle structurée et performante ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Réaliser un audit de présence digitale et définir une stratégie de contenu minimale.' },
+      { val: 1, label: 'En progression', reco: 'Optimiser le SEO, animer les réseaux sociaux avec une ligne éditoriale définie.' },
+      { val: 2, label: 'Avancé', reco: 'Mesurer le ROI des actions digitales et tester de nouveaux canaux (vidéo, podcast, campagnes ciblées).' },
+    ]
+  },
+  { id: 'D09', num: 9, axe: 'Données, outils & cybersécurité', axeColor: '#7687C2',
+    question: 'Un CRM est-il utilisé pour suivre prospects et clients ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Mettre en place un CRM simple (HubSpot free, Notion, Airtable) pour centraliser les contacts.' },
+      { val: 1, label: 'En progression', reco: 'Structurer le pipeline commercial dans le CRM et former les équipes à son usage.' },
+      { val: 2, label: 'Avancé', reco: 'Intégrer le CRM avec les autres outils (marketing automation, facturation) et exploiter les données clients.' },
+    ]
+  },
+  { id: 'D10', num: 10, axe: 'Données, outils & cybersécurité', axeColor: '#7687C2',
+    question: 'L\'expérience client est-elle améliorée grâce au numérique (support, chatbot, automatisation) ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Identifier les points de friction dans le parcours client et prioriser une première amélioration digitale.' },
+      { val: 1, label: 'En progression', reco: 'Déployer des outils de support digital (chat, FAQ automatisée) et mesurer la satisfaction.' },
+      { val: 2, label: 'Avancé', reco: 'Personnaliser l\'expérience client via la data et automatiser les interactions à faible valeur ajoutée.' },
+    ]
+  },
+  { id: 'D11', num: 11, axe: 'Innovation & adaptation', axeColor: '#33B5A1',
+    question: 'L\'organisation est-elle agile face aux évolutions numériques et réglementaires (IA, NIS2, cybersécurité) ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Mettre en place une veille réglementaire et technologique minimale (newsletters, EDIH, Vipe).' },
+      { val: 1, label: 'En progression', reco: 'Intégrer une revue trimestrielle des évolutions numériques dans le pilotage de l\'entreprise.' },
+      { val: 2, label: 'Avancé', reco: 'Anticiper les évolutions réglementaires et technologiques en participant aux groupes de travail sectoriels.' },
+    ]
+  },
+  { id: 'D12', num: 12, axe: 'Innovation & adaptation', axeColor: '#33B5A1',
+    question: 'L\'organisation teste-t-elle régulièrement de nouvelles solutions numériques pour améliorer ses produits/services/process ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Lancer un premier POC numérique sur un processus ciblé — contacter EDIH pour un accompagnement.' },
+      { val: 1, label: 'En progression', reco: 'Structurer une démarche d\'expérimentation avec des critères de go/no-go définis.' },
+      { val: 2, label: 'Avancé', reco: 'Intégrer l\'expérimentation dans la culture d\'entreprise et allouer un budget dédié à l\'innovation numérique.' },
+    ]
+  },
+  { id: 'D13', num: 13, axe: 'Stratégie & gouvernance digitale', axeColor: '#5DC4E1',
+    question: 'L\'entreprise dispose-t-elle d\'une vision numérique alignée avec sa stratégie globale ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Organiser un atelier de cadrage pour définir 2-3 priorités numériques alignées avec la stratégie.' },
+      { val: 1, label: 'En progression', reco: 'Formaliser une feuille de route numérique à 2 ans avec des jalons mesurables.' },
+      { val: 2, label: 'Avancé', reco: 'Intégrer la transformation numérique dans le plan stratégique et les tableaux de bord de direction.' },
+    ]
+  },
+  { id: 'D14', num: 14, axe: 'Stratégie & gouvernance digitale', axeColor: '#5DC4E1',
+    question: 'La direction est-elle activement engagée dans le pilotage du numérique ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Sensibiliser la direction aux enjeux du numérique via des témoignages d\'entreprises similaires.' },
+      { val: 1, label: 'En progression', reco: 'Désigner un référent numérique en interne et inclure le digital dans les revues de direction.' },
+      { val: 2, label: 'Avancé', reco: 'Piloter la transformation numérique au plus haut niveau avec des KPIs dédiés et un budget alloué.' },
+    ]
+  },
+  { id: 'D15', num: 15, axe: 'Stratégie & gouvernance digitale', axeColor: '#5DC4E1',
+    question: 'L\'entreprise mobilise-t-elle les dispositifs régionaux d\'accompagnement à la digitalisation ?',
+    niveaux: [
+      { val: 0, label: 'Exploratoire', reco: 'Contacter le référent EDIH de la Technopole pour un diagnostic digital gratuit.' },
+      { val: 1, label: 'En progression', reco: 'Contacter le référent EDIH de la Technopole pour accéder aux dispositifs d\'accompagnement avancés.' },
+      { val: 2, label: 'Avancé', reco: 'Contacter le référent EDIH de la Technopole pour co-construire des projets d\'innovation numérique.' },
+    ]
+  },
+];
+
+function getScoreDigital(val) {
+  if (val === 2) return 3;
+  if (val === 1) return 2;
+  if (val === 0) return 0;
+  return null;
+}
+
+function calculerScoresDigital(reponses) {
+  return DIAG_DIGITAL_AXES.map(function(axe) {
+    var questions = axe.questions;
+    var total = 0; var repondu = 0;
+    questions.forEach(function(qid) {
+      var val = reponses[qid];
+      if (val !== undefined && val !== null) {
+        total += getScoreDigital(val);
+        repondu++;
+      }
+    });
+    var maxScore = questions.length * 3;
+    var score = repondu > 0 ? Math.round((total / maxScore) * 100) : 0;
+    return { axe: axe, score: score, repondu: repondu, total: questions.length };
+  });
+}
+   
 function getScorePilier(val) {
   if (val === '+++') return 100;
   if (val === '~')   return 50;
@@ -6362,12 +6519,31 @@ function renderDiagnostics(projet, diagOuvert) {
       synthese: '<div style="font-size:11px;color:var(--gris-meta);font-style:italic;border-top:1px solid var(--gris-moyen);padding-top:12px;">Disponible prochainement</div>',
       cta: 'Bientôt disponible', onclick: ''
     },
-    { cls: 'digital bientot', icon: '💻', nom: 'Diagnostic Stratégie Digitale',
-      desc: 'Évaluer la maturité numérique de l\'entreprise : outils, données, cybersécurité, transformation digitale.',
-      profil: 'Tous profils', badge: '<span class="diag-vignette-badge" style="background:var(--gris-clair);color:var(--gris-meta);">Bientôt disponible</span>',
-      synthese: '<div style="font-size:11px;color:var(--gris-meta);font-style:italic;border-top:1px solid var(--gris-moyen);padding-top:12px;">Disponible prochainement</div>',
-      cta: 'Bientôt disponible', onclick: ''
-    },
+    (function() {
+      var diagD = projet.diagDigital || { reponses: {}, statut: 'non-demarre' };
+      var nbRepD = Object.keys(diagD.reponses || {}).length;
+      var scoresD = nbRepD > 0 ? calculerScoresDigital(diagD.reponses) : [];
+      var scoreD = scoresD.length > 0 ? Math.round(scoresD.reduce(function(a,b){return a+b.score;},0) / scoresD.length) : 0;
+      var badgeD = diagD.statut === 'realise'
+        ? '<span class="diag-vignette-badge" style="background:rgba(51,181,161,0.12);color:var(--vert);">✓ Réalisé</span>'
+        : diagD.statut === 'en-cours'
+          ? '<span class="diag-vignette-badge" style="background:rgba(252,194,0,0.15);color:#a07800;">' + nbRepD + '/15 réponses</span>'
+          : '<span class="diag-vignette-badge" style="background:var(--gris-clair);color:var(--gris-meta);">Tous profils</span>';
+      var syntheseD = nbRepD > 0
+        ? '<div class="diag-vignette-synthese"><div><div class="diag-vignette-score">' + scoreD + '%</div><div class="diag-vignette-score-label">Maturité digitale</div></div>'
+          + '<div class="diag-vignette-mini-bars">' + scoresD.map(function(s){
+              return '<div class="diag-vignette-mini-bar-row"><div class="diag-vignette-mini-bar-label">' + s.axe.label.split(' ').slice(0,2).join(' ') + '</div>'
+                + '<div class="diag-vignette-mini-bar-wrap"><div class="diag-vignette-mini-bar-fill" style="width:' + s.score + '%;background:' + s.axe.color + ';"></div></div></div>';
+            }).join('') + '</div></div>'
+        : '<div style="font-size:11px;color:var(--gris-meta);font-style:italic;border-top:1px solid var(--gris-moyen);padding-top:12px;">Diagnostic non réalisé</div>';
+      return { cls: 'digital' + (diagD.statut === 'realise' ? ' realise' : diagD.statut === 'en-cours' ? ' en-cours' : ''),
+        icon: '💻', nom: 'Diagnostic Stratégie Digitale',
+        desc: 'Évaluer la maturité numérique de l\'entreprise : compétences, outils, cybersécurité, gouvernance digitale.',
+        profil: 'Tous profils', badge: badgeD, synthese: syntheseD,
+        cta: diagD.statut === 'realise' ? '↺ Mettre à jour' : (nbRepD > 0 ? '→ Continuer' : '→ Démarrer le diagnostic'),
+        onclick: 'renderDiagDigital(currentProjet)'
+      };
+    })(),
   ];
 
   var vignetteHtml = vignettes.map(function(v) {
@@ -6391,6 +6567,240 @@ function renderDiagnostics(projet, diagOuvert) {
     + '<div class="diag-accueil-grid">' + vignetteHtml + '</div>';
 }
 
+function renderDiagDigital(projet) {
+  var container = document.getElementById('diagnostics-content');
+  if (!container || !projet) return;
+
+  if (!projet.diagDigital) projet.diagDigital = { reponses: {}, statut: 'non-demarre', date: null };
+  var diag = projet.diagDigital;
+  var reponses = diag.reponses || {};
+  var nbReponses = Object.keys(reponses).length;
+  var scoresAxes = calculerScoresDigital(reponses);
+  var scoreGlobal = nbReponses > 0
+    ? Math.round(scoresAxes.reduce(function(a,b){ return a + b.score; }, 0) / scoresAxes.length)
+    : 0;
+
+  var statutLabel = { 'non-demarre': 'Non démarré', 'en-cours': 'En cours', 'realise': 'Réalisé' };
+  var statutClass = { 'non-demarre': 'diag-statut-non', 'en-cours': 'diag-statut-cours', 'realise': 'diag-statut-realise' };
+
+  // Grouper questions par axe
+  var questionsHtml = DIAG_DIGITAL_AXES.map(function(axe) {
+    var qs = DIAG_DIGITAL_QUESTIONS.filter(function(q) { return q.axe === axe.label; });
+    var qHtml = qs.map(function(q) {
+      var reponse = reponses[q.id];
+      var niveauxHtml = q.niveaux.map(function(n) {
+        var sel = reponse === n.val;
+        var selClass = sel ? (n.val === 2 ? 'sel-pos' : n.val === 1 ? 'sel-med' : 'sel-neg') : '';
+        return '<button class="diag-niveau-btn ' + selClass + '" onclick="repondreDigital(\'' + q.id + '\',' + n.val + ')">' + n.label + '</button>';
+      }).join('');
+      var recoHtml = '';
+      if (reponse !== undefined && reponse !== null) {
+        var niveau = q.niveaux.find(function(n){ return n.val === reponse; });
+        if (niveau) recoHtml = '<div class="diag-reco visible">💡 <strong>Recommandation :</strong> ' + niveau.reco + '</div>';
+      }
+      return '<div class="diag-pilier' + (reponse !== undefined && reponse !== null ? ' actif' : '') + '" id="diag-q-' + q.id + '">'
+        + '<div class="diag-pilier-header">'
+          + '<div class="diag-pilier-num">' + q.num + '</div>'
+          + '<div class="diag-pilier-nom">' + q.question + '</div>'
+        + '</div>'
+        + '<div class="diag-niveaux">' + niveauxHtml + '</div>'
+        + recoHtml
+      + '</div>';
+    }).join('');
+
+    return '<div style="margin-bottom:28px;">'
+      + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:' + axe.color + ';border-left:3px solid ' + axe.color + ';padding-left:10px;margin-bottom:12px;">' + axe.label + '</div>'
+      + qHtml
+    + '</div>';
+  }).join('');
+
+  var scoresHtml = scoresAxes.map(function(s) {
+    return '<div class="diag-axe-row">'
+      + '<div class="diag-axe-nom">' + s.axe.label + '</div>'
+      + '<div class="diag-axe-bar"><div class="diag-axe-fill" style="width:' + s.score + '%;background:' + s.axe.color + ';"></div></div>'
+      + '<div class="diag-axe-pct">' + (s.repondu > 0 ? s.score + '%' : '—') + '</div>'
+    + '</div>';
+  }).join('');
+
+  var canvasId = 'radar-digital-' + Date.now();
+
+  container.innerHTML = '<button class="diag-back-btn" onclick="renderDiagnostics(currentProjet)">← Retour aux diagnostics</button>'
+    + '<div class="diag-header">'
+      + '<div><div class="diag-titre">Diagnostic Stratégie Digitale</div><div class="diag-sous-titre">15 questions · 4 thématiques · Maturité numérique</div></div>'
+      + '<span class="diag-statut-badge ' + (statutClass[diag.statut] || 'diag-statut-non') + '">' + (statutLabel[diag.statut] || 'Non démarré') + '</span>'
+    + '</div>'
+    + '<div class="diag-layout">'
+      + '<div>' + questionsHtml + '</div>'
+      + '<div class="diag-panel">'
+        + '<div class="diag-score-bloc">'
+          + '<div class="diag-score-titre">Score par thématique</div>'
+          + '<div class="diag-axes-scores">' + scoresHtml + '</div>'
+          + '<div class="diag-progression">'
+            + '<div class="diag-prog-val">' + scoreGlobal + '%</div>'
+            + '<div class="diag-prog-label">Score global<br><span style="font-size:10px;color:var(--gris-meta);">' + nbReponses + '/15 questions</span></div>'
+          + '</div>'
+        + '</div>'
+        + '<div class="diag-radar-bloc"><canvas id="' + canvasId + '" width="280" height="280"></canvas></div>'
+        + '<button class="diag-btn-enregistrer" onclick="enregistrerDiagDigital()" ' + (nbReponses < 15 ? 'disabled' : '') + '>'
+          + (nbReponses < 15 ? 'Répondre aux ' + (15 - nbReponses) + ' questions restantes' : 'Enregistrer le diagnostic')
+        + '</button>'
+        + (diag.statut === 'realise' ? '<button onclick="genererLivrableDigital()" style="width:100%;margin-top:8px;font-family:var(--font);font-size:13px;font-weight:600;color:var(--blanc);background:var(--noir);border:none;border-radius:var(--radius);padding:12px;cursor:pointer;">📄 Générer le livrable</button>' : '')
+      + '</div>'
+    + '</div>';
+
+  // Radar Chart.js
+  setTimeout(function() {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas || typeof Chart === 'undefined') return;
+    new Chart(canvas, {
+      type: 'radar',
+      data: {
+        labels: DIAG_DIGITAL_AXES.map(function(a) { return a.label; }),
+        datasets: [{
+          data: scoresAxes.map(function(s) { return s.score; }),
+          backgroundColor: 'rgba(93,196,225,0.15)',
+          borderColor: '#5DC4E1',
+          borderWidth: 2,
+          pointBackgroundColor: DIAG_DIGITAL_AXES.map(function(a) { return a.color; }),
+          pointRadius: 4,
+        }]
+      },
+      options: {
+        scales: { r: { min: 0, max: 100, ticks: { stepSize: 25, font: { size: 9 } }, pointLabels: { font: { size: 10 } } } },
+        plugins: { legend: { display: false } },
+        responsive: false,
+      }
+    });
+  }, 100);
+}
+
+function repondreDigital(qid, val) {
+  if (!currentProjet) return;
+  if (!currentProjet.diagDigital) currentProjet.diagDigital = { reponses: {}, statut: 'non-demarre', date: null };
+  currentProjet.diagDigital.reponses[qid] = val;
+  var nb = Object.keys(currentProjet.diagDigital.reponses).length;
+  if (nb > 0 && currentProjet.diagDigital.statut === 'non-demarre') currentProjet.diagDigital.statut = 'en-cours';
+  var scrollY = window.scrollY;
+  renderDiagDigital(currentProjet);
+  window.scrollTo(0, scrollY);
+}
+
+function enregistrerDiagDigital() {
+  if (!currentProjet || !currentProjet.diagDigital) return;
+  var diag = currentProjet.diagDigital;
+  var reponses = diag.reponses || {};
+  var nb = Object.keys(reponses).length;
+  if (nb < 15) { showToast('Répondez à toutes les questions avant d\'enregistrer', 'info'); return; }
+
+  diag.statut = 'realise';
+  diag.date = new Date().toISOString().split('T')[0];
+
+  var scoresAxes = calculerScoresDigital(reponses);
+  var scoreGlobal = Math.round(scoresAxes.reduce(function(a,b){ return a + b.score; }, 0) / scoresAxes.length);
+
+  // Actions prioritaires — questions niveau 0 en premier
+  var recoPrio = [];
+  [0, 1].forEach(function(niveau) {
+    DIAG_DIGITAL_QUESTIONS.forEach(function(q) {
+      if (reponses[q.id] === niveau) {
+        var n = q.niveaux.find(function(x){ return x.val === niveau; });
+        if (n) recoPrio.push({ question: q.question, reco: n.reco, niveau: niveau });
+      }
+    });
+  });
+
+  if (!currentProjet.sessions) currentProjet.sessions = [];
+  var idxExistant = -1;
+  for (var i = 0; i < currentProjet.sessions.length; i++) {
+    if (currentProjet.sessions[i].type === 'Diagnostic Digital') { idxExistant = i; break; }
+  }
+  var sessionDiag = {
+    numero: idxExistant >= 0 ? currentProjet.sessions[idxExistant].numero : currentProjet.sessions.length + 1,
+    date: diag.date,
+    type: 'Diagnostic Digital',
+    phase: currentProjet.phase,
+    duree: null,
+    scoreMoyen: scoreGlobal,
+    scoresAxes: scoresAxes.map(function(s){ return { label: s.axe.label, score: s.score, color: s.axe.color }; }),
+    realise: ['Diagnostic Stratégie Digitale réalisé — ' + nb + '/15 questions — Score global : ' + scoreGlobal + '%'],
+    decide: recoPrio.slice(0, 5).map(function(r){ return r.reco; }),
+    commentaire: recoPrio.length > 0
+      ? recoPrio.length + ' action' + (recoPrio.length > 1 ? 's' : '') + ' prioritaire' + (recoPrio.length > 1 ? 's' : '') + ' identifiée' + (recoPrio.length > 1 ? 's' : '')
+      : 'Bonne maturité numérique — maintenir les efforts.',
+  };
+  if (idxExistant >= 0) currentProjet.sessions[idxExistant] = sessionDiag;
+  else currentProjet.sessions.push(sessionDiag);
+
+  renderDiagDigital(currentProjet);
+  renderHistorique(currentProjet);
+  showToast('Diagnostic Stratégie Digitale enregistré ✓', 'success');
+  sauvegardeAuto();
+}
+
+function genererLivrableDigital() {
+  if (!currentProjet || !currentProjet.diagDigital) return;
+  var diag = currentProjet.diagDigital;
+  var reponses = diag.reponses || {};
+  var scoresAxes = calculerScoresDigital(reponses);
+  var scoreGlobal = Math.round(scoresAxes.reduce(function(a,b){ return a + b.score; }, 0) / scoresAxes.length);
+  var consultant = CONSULTANTS.find(function(c){ return c.id === currentProjet.consultant; }) || { nom: 'Vipe Technopole', email: 'contact@vipe-technopole.bzh', tel: '02 97 68 14 00' };
+  var dateStr = diag.date ? (function(){ var p=diag.date.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; })() : new Date().toLocaleDateString('fr-FR');
+
+  var lignesQuestions = DIAG_DIGITAL_AXES.map(function(axe) {
+    var qs = DIAG_DIGITAL_QUESTIONS.filter(function(q){ return q.axe === axe.label; });
+    var lignes = qs.map(function(q) {
+      var rep = reponses[q.id];
+      var niveau = q.niveaux.find(function(n){ return n.val === rep; });
+      var niveauLabel = niveau ? niveau.label : 'Non évalué';
+      var reco = niveau ? niveau.reco : '—';
+      var badgeColor = rep === 2 ? '#33B5A1' : rep === 1 ? '#c49000' : '#E3516D';
+      var badgeBg = rep === 2 ? 'rgba(51,181,161,0.1)' : rep === 1 ? 'rgba(252,194,0,0.1)' : 'rgba(227,81,109,0.08)';
+      return '<tr>'
+        + '<td style="font-weight:600;color:#1A1A1A;vertical-align:top;padding:8px 10px;font-size:10pt;">' + q.num + '. ' + q.question + '</td>'
+        + '<td style="vertical-align:top;padding:8px 10px;"><span style="background:' + badgeBg + ';color:' + badgeColor + ';font-weight:700;font-size:9pt;padding:2px 8px;border-radius:12px;">' + niveauLabel + '</span></td>'
+        + '<td style="vertical-align:top;padding:8px 10px;font-size:10pt;color:#444;">' + reco + '</td>'
+      + '</tr>';
+    }).join('');
+    return '<tr><td colspan="3" style="background:' + axe.color + '20;padding:8px 10px;font-weight:700;font-size:10pt;color:' + axe.color + ';border-top:2px solid ' + axe.color + ';">' + axe.label + '</td></tr>' + lignes;
+  }).join('');
+
+  var scoresLivrable = scoresAxes.map(function(s) {
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+      + '<div style="width:180px;font-size:10pt;font-weight:600;color:#444;">' + s.axe.label + '</div>'
+      + '<div style="flex:1;height:8px;background:#E0E0DC;border-radius:4px;overflow:hidden;">'
+        + '<div style="width:' + s.score + '%;height:100%;background:' + s.axe.color + ';border-radius:4px;"></div>'
+      + '</div>'
+      + '<div style="width:36px;text-align:right;font-size:10pt;font-weight:700;">' + s.score + '%</div>'
+    + '</div>';
+  }).join('');
+
+  var win = window.open('', '_blank');
+  win.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">'
+    + '<title>Diagnostic Stratégie Digitale — ' + currentProjet.nom + '</title>'
+    + '<style>body{font-family:Arial,sans-serif;margin:0;padding:32px;color:#1A1A1A;font-size:11pt;}'
+    + 'table{width:100%;border-collapse:collapse;}td,th{border:1px solid #E0E0DC;}'
+    + 'th{background:#F4F4F2;font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:8px 10px;text-align:left;}'
+    + '@media print{.no-print{display:none;}}'
+    + '</style></head><body>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding-bottom:16px;border-bottom:3px solid #FCC200;">'
+      + '<div><div style="font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;margin-bottom:4px;">VIPE TECHNOPOLE</div>'
+      + '<div style="font-size:20pt;font-weight:900;color:#1A1A1A;">Diagnostic Stratégie Digitale</div>'
+      + '<div style="font-size:11pt;color:#666;margin-top:4px;">' + currentProjet.nom + ' — ' + dateStr + '</div></div>'
+      + '<div style="text-align:right;"><div style="font-size:28pt;font-weight:900;color:#1A1A1A;">' + scoreGlobal + '%</div>'
+      + '<div style="font-size:9pt;color:#999;text-transform:uppercase;letter-spacing:1px;">Maturité digitale</div></div>'
+    + '</div>'
+    + '<div style="margin-bottom:24px;">' + scoresLivrable + '</div>'
+    + '<table><thead><tr><th style="width:40%;">Question</th><th style="width:15%;">Niveau</th><th>Recommandation</th></tr></thead><tbody>' + lignesQuestions + '</tbody></table>'
+    + '<div style="margin-top:32px;padding-top:16px;border-top:1px solid #E0E0DC;font-size:9pt;color:#999;">'
+      + consultant.nom + ' · ' + consultant.email + ' · ' + consultant.tel
+    + '</div>'
+    + '<div class="no-print" style="margin-top:24px;text-align:center;">'
+      + '<button onclick="window.print()" style="font-family:Arial;font-size:13px;font-weight:700;color:#1A1A1A;background:#FCC200;border:none;border-radius:8px;padding:12px 32px;cursor:pointer;">🖨 Imprimer / Exporter PDF</button>'
+    + '</div>'
+    + '</body></html>');
+  win.document.close();
+}   
+   
 function renderDiagPI(projet) {
   var container = document.getElementById('diagnostics-content');
   if (!container || !projet) return;
