@@ -5031,16 +5031,24 @@ function renderFicheProjet(p) {
   var jalonsValides = p.jalonsValidesIds || [];
 
   // Recalculer la phase automatiquement SAUF si la phase a été forcée manuellement
-  if (!p.phaseManuelle) {
-    var phaseCalculee = p.phase || 1;
-    for (var pi = 0; pi < phases.length; pi++) {
-      var ph = phases[pi];
-      var jp = getJalonsByPhase(ph.num, roadmap);
-      var vp = jalonsValides.filter(function(jid){ return jp.find(function(j){ return j.id === jid; }); });
-      if (vp.length < jp.length) { phaseCalculee = ph.num; break; }
-      if (pi === phases.length - 1) phaseCalculee = ph.num;
+ if (!p.phaseManuelle) {
+    // Priorité au diagnostic découverte si rempli
+    if (p.diagDecouverte && p.diagDecouverte.reponses && Object.keys(p.diagDecouverte.reponses).length >= 3) {
+      var scoreD = calculerScoreDecouverte(p.diagDecouverte.reponses);
+      var phaseDepuisDiag = calculerPhaseDepuisScore(scoreD);
+      if (phaseDepuisDiag !== p.phase) p.phase = phaseDepuisDiag;
+    } else {
+      // Fallback sur jalons
+      var phaseCalculee = p.phase || 1;
+      for (var pi = 0; pi < phases.length; pi++) {
+        var ph = phases[pi];
+        var jp = getJalonsByPhase(ph.num, roadmap);
+        var vp = jalonsValides.filter(function(jid){ return jp.find(function(j){ return j.id === jid; }); });
+        if (vp.length < jp.length) { phaseCalculee = ph.num; break; }
+        if (pi === phases.length - 1) phaseCalculee = ph.num;
+      }
+      if (phaseCalculee !== p.phase) p.phase = phaseCalculee;
     }
-    if (phaseCalculee !== p.phase) p.phase = phaseCalculee;
   }
 
   // Calcul progression phase courante
@@ -6702,6 +6710,10 @@ function renderDiagnostics(projet, diagOuvert) {
     renderDiagPI(projet);
     return;
   }
+  if (diagOuvert === 'Decouverte') {
+    renderDiagDecouverte(projet);
+    return;
+  }
 
   // Page d'accueil — 4 vignettes
   if (!projet.diagPI) projet.diagPI = { reponses: {}, statut: 'non-demarre', date: null };
@@ -6742,6 +6754,45 @@ function renderDiagnostics(projet, diagOuvert) {
   }
 
   var vignettes = [
+     // Diagnostic Découverte
+    (function() {
+      var diagD = projet.diagDecouverte || { reponses: {}, statut: 'non-demarre' };
+      var nbRepD = Object.keys(diagD.reponses || {}).length;
+      var scoreD = nbRepD > 0 ? calculerScoreDecouverte(diagD.reponses) : 0;
+      var scorePctD = Math.round(scoreD * 100);
+      var phaseD = nbRepD > 0 ? calculerPhaseDepuisScore(scoreD) : null;
+      var niveauD = phaseD === 1 ? 'Idéation' : phaseD === 2 ? 'Prototypage' : phaseD === 3 ? 'Mise en Marché' : phaseD === 4 ? 'Scale-up' : '';
+      var badgeD = diagD.statut === 'realise'
+        ? '<span class="diag-vignette-badge" style="background:rgba(51,181,161,0.12);color:var(--vert);">✓ Réalisé</span>'
+        : diagD.statut === 'en-cours'
+          ? '<span class="diag-vignette-badge" style="background:rgba(252,194,0,0.15);color:#a07800;">' + nbRepD + '/6 axes</span>'
+          : '<span class="diag-vignette-badge" style="background:var(--gris-clair);color:var(--gris-meta);">1er RDV</span>';
+      var syntheseD = nbRepD > 0
+        ? '<div class="diag-vignette-synthese">'
+            + '<div><div class="diag-vignette-score">' + scorePctD + '%</div><div class="diag-vignette-score-label">Maturité</div></div>'
+            + '<div class="diag-vignette-mini-bars">'
+            + DIAG_DECOUVERTE_AXES.map(function(axe) {
+                var val = diagD.reponses[axe.id] || 0;
+                var pct = Math.round((val / 4) * 100);
+                return '<div class="diag-vignette-mini-bar-row">'
+                  + '<div class="diag-vignette-mini-bar-label">' + axe.label.split(' ').slice(0,2).join(' ') + '</div>'
+                  + '<div class="diag-vignette-mini-bar-wrap"><div class="diag-vignette-mini-bar-fill" style="width:' + pct + '%;background:' + axe.color + ';"></div></div>'
+                  + '</div>';
+              }).join('')
+            + '</div>'
+          + '</div>'
+        : '<div style="font-size:11px;color:var(--gris-meta);font-style:italic;border-top:1px solid var(--gris-moyen);padding-top:12px;">À réaliser lors du 1er RDV</div>';
+      return {
+        cls: 'pi' + (diagD.statut === 'realise' ? ' realise' : diagD.statut === 'en-cours' ? ' en-cours' : ''),
+        icon: '🔍', nom: 'Diagnostic Découverte',
+        desc: 'Évaluer la maturité du projet sur 6 axes clés — calcule automatiquement la phase et les besoins.',
+        profil: 'Tous profils — 1er RDV',
+        badge: badgeD,
+        synthese: syntheseD,
+        cta: diagD.statut === 'realise' ? '↺ Mettre à jour' : (nbRepD > 0 ? '→ Continuer' : '→ Démarrer'),
+        onclick: 'renderDiagnostics(currentProjet, \'Decouverte\')'
+      };
+    })(),
     // Diagnostic PI
     { cls: vignetteClassPI, icon: '⚖️', nom: 'Diagnostic PI',
       desc: 'Évaluer les 10 piliers de maturité en Propriété Intellectuelle : actifs immatériels, protection, contrats, veille…',
@@ -6809,7 +6860,295 @@ function renderDiagnostics(projet, diagOuvert) {
     + '</div>'
     + '<div class="diag-accueil-grid">' + vignetteHtml + '</div>';
 }
+function renderDiagDecouverte(projet) {
+  var container = document.getElementById('diagnostics-content');
+  if (!container || !projet) return;
 
+  if (!projet.diagDecouverte) projet.diagDecouverte = { reponses: {}, statut: 'non-demarre', date: null };
+  var diag = projet.diagDecouverte;
+  var reponses = diag.reponses || {};
+  var nbReponses = Object.keys(reponses).length;
+  var score = nbReponses > 0 ? calculerScoreDecouverte(reponses) : 0;
+  var scorePct = Math.round(score * 100);
+  var phase = nbReponses > 0 ? calculerPhaseDepuisScore(score) : null;
+  var niveauLabel = phase === 1 ? 'Idéation' : phase === 2 ? 'Prototypage' : phase === 3 ? 'Mise en Marché' : phase === 4 ? 'Scale-up' : '—';
+  var phaseColor = phase ? (PHASE_COLORS[phase] || '#FCC200') : '#999';
+
+  var questionsHtml = DIAG_DECOUVERTE_AXES.map(function(axe, i) {
+    var valActuelle = reponses[axe.id] || null;
+    var niveauxHtml = DIAG_DECOUVERTE_NIVEAUX.map(function(n) {
+      var sel = valActuelle === n.val;
+      return '<div onclick="repondreDecouverte(\'' + axe.id + '\',' + n.val + ')" '
+        + 'style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:var(--radius-sm);border:1.5px solid ' + (sel ? axe.color : 'var(--gris-moyen)') + ';background:' + (sel ? axe.color + '15' : 'var(--gris-clair)') + ';cursor:pointer;margin-bottom:6px;transition:all 0.15s;">'
+        + '<div style="width:16px;height:16px;border-radius:50%;border:2px solid ' + (sel ? axe.color : 'var(--gris-moyen)') + ';flex-shrink:0;margin-top:1px;background:' + (sel ? axe.color : 'transparent') + ';display:flex;align-items:center;justify-content:center;">'
+        + (sel ? '<div style="width:6px;height:6px;border-radius:50%;background:var(--blanc);"></div>' : '')
+        + '</div>'
+        + '<div style="font-size:12px;font-weight:' + (sel ? '600' : '400') + ';color:' + (sel ? axe.color : 'var(--gris-texte)') + ';line-height:1.4;">'
+        + 'Niveau ' + n.val + ' — ' + n.labels[i]
+        + '</div></div>';
+    }).join('');
+
+    return '<div style="background:var(--blanc);border:1.5px solid ' + (valActuelle ? axe.color + '60' : 'var(--gris-moyen)') + ';border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:12px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
+        + '<div style="width:10px;height:10px;border-radius:50%;background:' + axe.color + ';flex-shrink:0;"></div>'
+        + '<div style="font-size:13px;font-weight:700;color:var(--noir);">' + axe.label + '</div>'
+        + (valActuelle ? '<span style="margin-left:auto;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:' + axe.color + '20;color:' + axe.color + ';">Niveau ' + valActuelle + '</span>' : '')
+      + '</div>'
+      + niveauxHtml
+    + '</div>';
+  }).join('');
+
+  var scoresHtml = DIAG_DECOUVERTE_AXES.map(function(axe) {
+    var val = reponses[axe.id] || 0;
+    var pct = Math.round((val / 4) * 100);
+    return '<div class="diag-axe-row">'
+      + '<div class="diag-axe-nom">' + axe.label + '</div>'
+      + '<div class="diag-axe-bar"><div class="diag-axe-fill" style="width:' + pct + '%;background:' + axe.color + ';"></div></div>'
+      + '<div class="diag-axe-pct">' + (val > 0 ? 'N' + val : '—') + '</div>'
+    + '</div>';
+  }).join('');
+
+  var canvasId = 'radar-decouverte-' + Date.now();
+
+  container.innerHTML = '<button class="diag-back-btn" onclick="renderDiagnostics(currentProjet)">← Retour aux diagnostics</button>'
+    + '<div class="diag-header">'
+      + '<div><div class="diag-titre">Diagnostic Découverte</div><div class="diag-sous-titre">6 axes de maturité · Phase calculée automatiquement</div></div>'
+      + '<span class="diag-statut-badge ' + (diag.statut === 'realise' ? 'diag-statut-realise' : diag.statut === 'en-cours' ? 'diag-statut-cours' : 'diag-statut-non') + '">' + (diag.statut === 'realise' ? 'Réalisé' : diag.statut === 'en-cours' ? 'En cours' : 'Non démarré') + '</span>'
+    + '</div>'
+    + '<div class="diag-layout">'
+      + '<div>' + questionsHtml + '</div>'
+      + '<div class="diag-panel">'
+        + '<div class="diag-score-bloc">'
+          + '<div class="diag-score-titre">Score par axe</div>'
+          + '<div class="diag-axes-scores">' + scoresHtml + '</div>'
+          + '<div class="diag-progression">'
+            + '<div class="diag-prog-val">' + scorePct + '%</div>'
+            + '<div><div class="diag-prog-label">Maturité globale</div>'
+            + (phase ? '<div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:' + phaseColor + '20;border:1.5px solid ' + phaseColor + '40;border-radius:var(--radius-sm);padding:4px 10px;font-size:12px;font-weight:700;color:' + phaseColor + ';">Phase ' + phase + ' — ' + niveauLabel + '</div>' : '')
+            + '</div>'
+          + '</div>'
+        + '</div>'
+        + '<div class="diag-radar-bloc"><canvas id="' + canvasId + '" width="280" height="280"></canvas></div>'
+        + '<button class="diag-btn-enregistrer" onclick="enregistrerDiagDecouverte()" ' + (nbReponses < 6 ? 'disabled' : '') + '>'
+          + (nbReponses < 6 ? 'Évaluer les ' + (6 - nbReponses) + ' axes restants' : 'Enregistrer le diagnostic')
+        + '</button>'
+        + (diag.statut === 'realise' ? '<button onclick="genererLivrableDecouverte()" style="width:100%;margin-top:8px;font-family:var(--font);font-size:13px;font-weight:600;color:var(--blanc);background:var(--noir);border:none;border-radius:var(--radius);padding:12px;cursor:pointer;">📄 Générer le livrable</button>' : '')
+      + '</div>'
+    + '</div>';
+
+  // Radar
+  setTimeout(function() {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas || typeof Chart === 'undefined') return;
+    new Chart(canvas, {
+      type: 'radar',
+      data: {
+        labels: DIAG_DECOUVERTE_AXES.map(function(a) { return a.label; }),
+        datasets: [{
+          data: DIAG_DECOUVERTE_AXES.map(function(a) { return Math.round(((reponses[a.id] || 0) / 4) * 100); }),
+          backgroundColor: 'rgba(252,194,0,0.15)',
+          borderColor: '#FCC200',
+          borderWidth: 2,
+          pointBackgroundColor: DIAG_DECOUVERTE_AXES.map(function(a) { return a.color; }),
+          pointRadius: 4,
+        }]
+      },
+      options: {
+        scales: { r: { min: 0, max: 100, ticks: { stepSize: 25, font: { size: 9 } }, pointLabels: { font: { size: 10 } } } },
+        plugins: { legend: { display: false } },
+        responsive: false,
+      }
+    });
+  }, 100);
+}
+
+function repondreDecouverte(axeId, val) {
+  if (!currentProjet) return;
+  if (!currentProjet.diagDecouverte) currentProjet.diagDecouverte = { reponses: {}, statut: 'non-demarre', date: null };
+  currentProjet.diagDecouverte.reponses[axeId] = val;
+  var nb = Object.keys(currentProjet.diagDecouverte.reponses).length;
+  if (nb > 0 && currentProjet.diagDecouverte.statut === 'non-demarre') currentProjet.diagDecouverte.statut = 'en-cours';
+  // Recalculer et mettre à jour la phase si pas manuelle
+  if (!currentProjet.phaseManuelle) {
+    var score = calculerScoreDecouverte(currentProjet.diagDecouverte.reponses);
+    var nouvellePhase = calculerPhaseDepuisScore(score);
+    if (nouvellePhase !== currentProjet.phase) {
+      currentProjet.phase = nouvellePhase;
+    }
+  }
+  var scrollY = window.scrollY;
+  renderDiagDecouverte(currentProjet);
+  window.scrollTo(0, scrollY);
+}
+
+function enregistrerDiagDecouverte() {
+  if (!currentProjet || !currentProjet.diagDecouverte) return;
+  var diag = currentProjet.diagDecouverte;
+  var reponses = diag.reponses || {};
+  var nb = Object.keys(reponses).length;
+  if (nb < 6) { showToast('Évaluez les 6 axes avant d\'enregistrer', 'info'); return; }
+
+  diag.statut = 'realise';
+  diag.date = new Date().toISOString().split('T')[0];
+  var score = calculerScoreDecouverte(reponses);
+  var scorePct = Math.round(score * 100);
+  var phase = calculerPhaseDepuisScore(score);
+  var niveauLabel = phase === 1 ? 'Idéation' : phase === 2 ? 'Prototypage' : phase === 3 ? 'Mise en Marché' : 'Scale-up';
+
+  // Mettre à jour la phase du projet
+  if (!currentProjet.phaseManuelle) {
+    currentProjet.phase = phase;
+  }
+  // Mettre à jour les besoins
+  currentProjet.besoins = calculerBesoinsDepuisReponses(reponses);
+
+  // Ajouter à l'historique
+  if (!currentProjet.sessions) currentProjet.sessions = [];
+  var idxExistant = -1;
+  for (var i = 0; i < currentProjet.sessions.length; i++) {
+    if (currentProjet.sessions[i].type === 'Diagnostic Découverte') { idxExistant = i; break; }
+  }
+  var besoinsDetectes = calculerBesoinsDepuisReponses(reponses);
+  var sessionDiag = {
+    numero: idxExistant >= 0 ? currentProjet.sessions[idxExistant].numero : currentProjet.sessions.length + 1,
+    date: diag.date,
+    type: 'Diagnostic Découverte',
+    phase: currentProjet.phase,
+    duree: null,
+    scoreMoyen: scorePct,
+    scoresAxes: DIAG_DECOUVERTE_AXES.map(function(a) {
+      return { label: a.label, score: Math.round(((reponses[a.id] || 0) / 4) * 100), color: a.color };
+    }),
+    realise: ['Diagnostic Découverte réalisé — Score : ' + scorePct + '% — ' + niveauLabel],
+    decide: besoinsDetectes.map(function(b) { return 'Besoin identifié : ' + b; }),
+    commentaire: 'Phase recommandée : Phase ' + phase + ' — ' + niveauLabel,
+  };
+  if (idxExistant >= 0) currentProjet.sessions[idxExistant] = sessionDiag;
+  else currentProjet.sessions.push(sessionDiag);
+
+  renderFicheProjet(currentProjet);
+  renderDiagDecouverte(currentProjet);
+  renderHistorique(currentProjet);
+  showToast('Diagnostic Découverte enregistré — Phase ' + phase + ' calculée ✓', 'success');
+  sauvegardeAuto();
+}
+
+function genererLivrableDecouverte() {
+  if (!currentProjet || !currentProjet.diagDecouverte) return;
+  var diag = currentProjet.diagDecouverte;
+  var reponses = diag.reponses || {};
+  var score = calculerScoreDecouverte(reponses);
+  var scorePct = Math.round(score * 100);
+  var phase = calculerPhaseDepuisScore(score);
+  var niveauLabel = phase === 1 ? 'Idéation' : phase === 2 ? 'Prototypage' : phase === 3 ? 'Mise en Marché' : 'Scale-up';
+  var phaseColor = PHASE_COLORS[phase] || '#FCC200';
+  var consultant = CONSULTANTS.find(function(c) { return c.id === currentProjet.consultant; }) || { nom: 'Vipe Technopole', email: 'contact@vipe-technopole.bzh', tel: '02 97 68 14 00' };
+  var dateStr = diag.date ? (function(){ var p = diag.date.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; })() : new Date().toLocaleDateString('fr-FR');
+  var besoins = calculerBesoinsDepuisReponses(reponses);
+
+  var lignesAxes = DIAG_DECOUVERTE_AXES.map(function(axe, i) {
+    var val = reponses[axe.id] || null;
+    var niveau = val ? DIAG_DECOUVERTE_NIVEAUX.find(function(n) { return n.val === val; }) : null;
+    var niveauDesc = niveau ? niveau.labels[i] : 'Non évalué';
+    var pct = val ? Math.round((val / 4) * 100) : 0;
+    var barColor = axe.color;
+    return '<tr>'
+      + '<td style="font-weight:700;color:#1A1A1A;vertical-align:top;padding:10px 12px;border-left:4px solid ' + axe.color + ';">' + axe.label + '</td>'
+      + '<td style="vertical-align:top;padding:10px 12px;text-align:center;"><span style="font-size:18px;font-weight:900;color:' + axe.color + ';">' + (val || '—') + '</span><span style="font-size:10px;color:#999;">/4</span></td>'
+      + '<td style="vertical-align:top;padding:10px 12px;font-size:10pt;color:#444;">' + niveauDesc + '</td>'
+    + '</tr>';
+  }).join('');
+
+  // Actions prioritaires — axes les plus faibles
+  var axesTriesParScore = DIAG_DECOUVERTE_AXES.map(function(axe, i) {
+    return { axe: axe, val: reponses[axe.id] || 0, index: i };
+  }).sort(function(a, b) { return a.val - b.val; });
+
+  var actionsHtml = axesTriesParScore.slice(0, 4).map(function(item) {
+    var niveau = item.val > 0 ? DIAG_DECOUVERTE_NIVEAUX.find(function(n) { return n.val === item.val; }) : DIAG_DECOUVERTE_NIVEAUX[0];
+    var prochainNiveau = item.val < 4 ? DIAG_DECOUVERTE_NIVEAUX.find(function(n) { return n.val === item.val + 1; }) : null;
+    return '<div style="margin-bottom:12px;padding:12px 16px;border-left:4px solid ' + item.axe.color + ';background:' + item.axe.color + '10;border-radius:0 var(--radius) var(--radius) 0;">'
+      + '<div style="font-size:11pt;font-weight:700;color:#1A1A1A;margin-bottom:4px;">' + item.axe.label + ' — Niveau ' + item.val + '/4</div>'
+      + (prochainNiveau ? '<div style="font-size:10pt;color:#444;">→ Objectif : ' + prochainNiveau.labels[item.index] + '</div>' : '<div style="font-size:10pt;color:#33B5A1;font-weight:600;">✓ Niveau maximum atteint</div>')
+    + '</div>';
+  }).join('');
+
+  var financementsReco = [];
+  if (phase <= 2) financementsReco = ['Emergys local / régional', 'Inno Conseil', 'Bourse French Tech'];
+  else if (phase === 3) financementsReco = ['Inno R&D', 'PHAR Bretagne', 'FISO'];
+  else financementsReco = ['Breizh Up', 'Pass Investissement', 'CIR'];
+
+  var scoresRadar = DIAG_DECOUVERTE_AXES.map(function(a) {
+    var val = reponses[a.id] || 0;
+    var pct = Math.round((val / 4) * 100);
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+      + '<div style="width:160px;font-size:10pt;font-weight:600;color:#444;">' + a.label + '</div>'
+      + '<div style="flex:1;height:8px;background:#E0E0DC;border-radius:4px;overflow:hidden;">'
+        + '<div style="width:' + pct + '%;height:100%;background:' + a.color + ';border-radius:4px;"></div>'
+      + '</div>'
+      + '<div style="width:40px;text-align:right;font-size:10pt;font-weight:700;color:#1A1A1A;">N' + (val || '—') + '</div>'
+    + '</div>';
+  }).join('');
+
+  var win = window.open('', '_blank');
+  win.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">'
+    + '<title>Diagnostic Découverte — ' + currentProjet.nom + '</title>'
+    + '<style>body{font-family:Arial,sans-serif;margin:0;padding:32px;color:#1A1A1A;font-size:11pt;line-height:1.5;}'
+    + 'table{width:100%;border-collapse:collapse;}td,th{border:1px solid #E0E0DC;}'
+    + 'th{background:#F4F4F2;font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:8px 10px;text-align:left;}'
+    + 'h2{font-size:14pt;font-weight:700;color:#1A1A1A;margin:24px 0 12px;padding-bottom:6px;border-bottom:2px solid #E0E0DC;}'
+    + '@media print{.no-print{display:none;}}'
+    + '</style></head><body>'
+
+    // En-tête
+    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;padding-bottom:20px;border-bottom:3px solid #FCC200;">'
+      + '<div>'
+        + '<div style="font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;margin-bottom:6px;">VIPE TECHNOPOLE</div>'
+        + '<div style="font-size:22pt;font-weight:900;color:#1A1A1A;margin-bottom:4px;">Diagnostic Découverte</div>'
+        + '<div style="font-size:12pt;color:#666;">' + currentProjet.nom + ' · ' + dateStr + '</div>'
+        + '<div style="font-size:10pt;color:#999;margin-top:4px;">' + consultant.nom + ' · ' + consultant.email + '</div>'
+      + '</div>'
+      + '<div style="text-align:right;">'
+        + '<div style="font-size:36pt;font-weight:900;color:#1A1A1A;">' + scorePct + '%</div>'
+        + '<div style="font-size:9pt;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Maturité globale</div>'
+        + '<div style="display:inline-flex;align-items:center;gap:8px;background:' + phaseColor + '20;border:2px solid ' + phaseColor + ';border-radius:8px;padding:8px 16px;">'
+          + '<div style="width:10px;height:10px;border-radius:50%;background:' + phaseColor + ';"></div>'
+          + '<div style="font-size:13pt;font-weight:700;color:' + phaseColor + ';">Phase ' + phase + ' — ' + niveauLabel + '</div>'
+        + '</div>'
+      + '</div>'
+    + '</div>'
+
+    // Scores par axe
+    + '<h2>Évaluation par axe</h2>'
+    + '<div style="margin-bottom:24px;">' + scoresRadar + '</div>'
+
+    // Tableau détaillé
+    + '<table style="margin-bottom:32px;"><thead><tr>'
+      + '<th style="width:35%;">Axe</th><th style="width:10%;text-align:center;">Niveau</th><th>Description</th>'
+    + '</tr></thead><tbody>' + lignesAxes + '</tbody></table>'
+
+    // Plan d'action
+    + '<h2>Plan d\'action prioritaire</h2>'
+    + '<div style="margin-bottom:24px;">' + actionsHtml + '</div>'
+
+    // Besoins détectés
+    + (besoins.length > 0 ? '<h2>Besoins détectés</h2>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;">'
+      + besoins.map(function(b) { return '<span style="background:#FCC20015;border:1px solid #FCC20060;border-radius:20px;padding:4px 12px;font-size:10pt;font-weight:600;color:#a07800;">' + b + '</span>'; }).join('')
+      + '</div>' : '')
+
+    // Financements recommandés
+    + '<h2>Financements recommandés</h2>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:32px;">'
+    + financementsReco.map(function(f) { return '<span style="background:#F4F4F2;border:1px solid #E0E0DC;border-radius:20px;padding:4px 12px;font-size:10pt;font-weight:600;color:#1A1A1A;">' + f + '</span>'; }).join('')
+    + '</div>'
+
+    + '<div class="no-print" style="margin-top:24px;text-align:center;padding:24px;border-top:1px solid #E0E0DC;">'
+      + '<button onclick="window.print()" style="font-family:Arial;font-size:13px;font-weight:700;color:#1A1A1A;background:#FCC200;border:none;border-radius:8px;padding:12px 32px;cursor:pointer;">🖨 Imprimer / Exporter PDF</button>'
+    + '</div>'
+    + '</body></html>');
+  win.document.close();
+}
 function renderDiagDigital(projet) {
   var container = document.getElementById('diagnostics-content');
   if (!container || !projet) return;
