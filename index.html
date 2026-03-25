@@ -5576,7 +5576,7 @@ var fl = projet._filtresFinancements || {};
       if (typeProjet === 'porteur') {
         benefOk = benefStr.includes('porteur') || benefStr.includes('startup') || benefStr.includes('tous');
       } else if (typeProjet === 'moins3') {
-        benefOk = benefStr.includes('startup') || benefStr.includes('porteur') || benefStr.includes('tpe') || benefStr.includes('pme') || benefStr.includes('tous');
+        benefOk = benefStr.includes('startup') || benefStr.includes('porteur') || benefStr.includes('tpe') || benefStr.includes('pme') || benefStr.includes('entreprise') || benefStr.includes('tous');
       } else if (typeProjet === 'plus3') {
         benefOk = benefStr.includes('pme') || benefStr.includes('eti') || benefStr.includes('entreprise') || benefStr.includes('tous');
         // Affiner avec taille si renseignée
