@@ -2418,7 +2418,7 @@ body {
   font-size: 11px; font-weight: 600; color: var(--gris-meta);
   background: var(--gris-clair); padding: 2px 8px; border-radius: 20px;
 }
-.fin-grid {
+#financements-content { transition: opacity 0.1s ease; }.fin-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px; margin-bottom: 32px;
 }
@@ -5536,7 +5536,9 @@ function renderFinancements(projet) {
     setTimeout(function(){ if (currentProjet) renderFinancements(currentProjet); }, 1500);
     return;
   }
-
+var elFade = document.getElementById('financements-content');
+if (elFade) elFade.style.opacity = '0.6';
+   
 var fl = projet._filtresFinancements || {};
   var phase = fl.phase || projet.phase || 1;
   var isDeeptech = fl.deeptech !== undefined ? fl.deeptech : (projet.deeptech === 'oui');
@@ -5996,6 +5998,13 @@ return '<div class="fin-card">'
         + '</div>'
       + '</div>'
     + '</div>';
++ '</div>'
+    + '</div>';
+
+  setTimeout(function() {
+    var el2 = document.getElementById('financements-content');
+    if (el2) el2.style.opacity = '1';
+  }, 50);
 }
 
 function ajouterSuivi(id, nom) {
