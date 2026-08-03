@@ -7032,7 +7032,16 @@ function renderDiagFusion(projet) {
     + '<div style="display:flex;align-items:center;gap:10px;"><div class="diag-prog-val">' + Math.round(scoreElig*100) + '%</div>'
     + '<div><div class="diag-prog-label">Éligibilité</div><div style="margin-top:4px;display:inline-flex;gap:6px;background:' + verdictColors[verdict] + '20;border:1.5px solid ' + verdictColors[verdict] + '40;border-radius:var(--radius-sm);padding:3px 10px;font-size:12px;font-weight:700;color:' + verdictColors[verdict] + ';">' + verdictLabels[verdict] + '</div></div></div>'
     + '</div></div>' + outilsHtml
-    + '<button class="diag-btn-enregistrer" onclick="enregistrerDiagFusion()" ' + (nbReponses===0?'disabled':'') + '>'
+    + (verdict === 'reoriente' ? (
+      '<div class="diag-score-bloc" style="margin-top:12px;">'
+      + '<div class="diag-score-titre">Réorientation</div>'
+      + '<label style="font-size:11px;font-weight:700;color:var(--gris-texte);display:block;margin-bottom:4px;">Structure recommandée</label>'
+      + '<input type="text" class="input-text" style="width:100%;margin-bottom:10px;" value="' + (diag.structureRecommandee||'') + '" placeholder="Ex : BGE Morbihan" oninput="majStructureRecommandee(this.value)">'
+      + '<label style="font-size:11px;font-weight:700;color:var(--gris-texte);display:block;margin-bottom:4px;">Pourquoi cette structure</label>'
+      + '<textarea class="session-textarea" style="width:100%;" oninput="majRaisonReorientation(this.value)" placeholder="Ex : accompagnement dédié aux projets encore en phase d\'idéation">' + (diag.raisonReorientation||'') + '</textarea>'
+      + '</div>'
+    ) : '')
+     + '<button class="diag-btn-enregistrer" onclick="enregistrerDiagFusion()" ' + (nbReponses===0?'disabled':'') + '>'
     + (nbReponses===0?'Répondez à au moins un axe':'Enregistrer le diagnostic') + '</button>'
     + '</div></div>'
     + (diag.statut === 'realise' ? '<button onclick="genererLivrableFusion()" style="width:100%;margin-top:8px;font-family:var(--font);font-size:13px;font-weight:600;color:var(--blanc);background:var(--noir);border:none;border-radius:var(--radius);padding:12px;cursor:pointer;">📄 Générer le livrable</button>' : '');
@@ -7094,15 +7103,57 @@ var DIAG_FUSION_INTERPRETATIONS = {
     "Vos ressources sont solides, avec un autofinancement ou une levée déjà engagée.",
   ],
 };
+function majStructureRecommandee(val) {
+  if (!currentProjet || !currentProjet.diagDecouverte) return;
+  currentProjet.diagDecouverte.structureRecommandee = val;
+}
 
+function majRaisonReorientation(val) {
+  if (!currentProjet || !currentProjet.diagDecouverte) return;
+  currentProjet.diagDecouverte.raisonReorientation = val;
+}
+
+function scoreAxeAffichage(axe, reponses) {
+  if (axe.factuel) return null;
+  if (axe.sousScore) {
+    var m = reponses[axe.id + '_m'], n = reponses[axe.id + '_n'];
+    if (m === undefined && n === undefined) return null;
+    if (n === undefined || (m !== undefined && m >= n)) {
+      return { val: m, texte: DIAG_FUSION_INTERPRETATIONS[axe.id][m] };
+    }
+    return { val: n, texte: axe.niveauxNouveaute[n] };
+  }
+  var v = reponses[axe.id];
+  if (v === undefined) return null;
+  return { val: v, texte: DIAG_FUSION_INTERPRETATIONS[axe.id][v] };
+}
+
+function collecterPointsFortsVigilance(reponses) {
+  var scores = DIAG_FUSION_AXES.filter(function(a){ return !a.factuel; }).map(function(axe) {
+    var s = scoreAxeAffichage(axe, reponses);
+    return s ? { label: axe.label, val: s.val, texte: s.texte } : null;
+  }).filter(Boolean);
+  var forts = scores.filter(function(s){ return s.val >= 2; }).sort(function(a,b){ return b.val - a.val; }).slice(0, 3);
+  var vigilance = scores.filter(function(s){ return s.val <= 1; }).sort(function(a,b){ return a.val - b.val; }).slice(0, 3);
+  return { forts: forts, vigilance: vigilance };
+}
 function genererLivrableFusion() {
   if (!currentProjet || !currentProjet.diagDecouverte) return;
   var reponses = currentProjet.diagDecouverte.reponses || {};
   reponses['dis'] = calculerNiveauDIS(currentProjet.dis);
 
+  var nbReponses = Object.keys(reponses).filter(function(k){ return k !== 'dis'; }).length;
+  var incomplet = nbReponses < 9;
+
   var scorePhase = calculerScorePhase(reponses);
   var scoreElig = calculerScoreEligibilite(reponses);
-  var phase = calculerPhaseDepuisScore(scorePhase);
+  var phaseCalculee = calculerPhaseDepuisScore(scorePhase);
+
+  // Plafonnement par la maturité du produit
+  var produitM = reponses['produit_m'];
+  var plafond = { 0: 1, 1: 2, 2: 3, 3: 4 };
+  var phase = (produitM !== undefined && plafond[produitM] < phaseCalculee) ? plafond[produitM] : phaseCalculee;
+
   var verdict = calculerVerdictEligibilite(scoreElig);
   var verdictLabels = { 'retenu': 'Projet retenu', 'a-examiner': 'Projet à examiner en collectif', 'reoriente': 'Projet réorienté' };
   var verdictColors = { 'retenu': '#33B5A1', 'a-examiner': '#c49000', 'reoriente': '#E3516D' };
@@ -7110,22 +7161,56 @@ function genererLivrableFusion() {
   var consultant = CONSULTANTS.find(function(c) { return c.id === currentProjet.consultant; }) || { nom: 'Vipe Technopole', email: 'contact@vipe-technopole.bzh', tel: '02 97 68 14 00' };
   var dateStr = currentProjet.diagDecouverte.date ? (function(){ var p = currentProjet.diagDecouverte.date.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; })() : new Date().toLocaleDateString('fr-FR');
 
+  var fv = collecterPointsFortsVigilance(reponses);
+  var syntheseHtml = '<div style="display:flex;gap:24px;margin-bottom:24px;">'
+    + '<div style="flex:1;"><div style="font-size:10pt;font-weight:700;color:#33B5A1;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Points forts</div>'
+    + (fv.forts.length ? fv.forts.map(function(f){ return '<div style="font-size:10pt;color:#444;margin-bottom:4px;">• ' + f.texte + '</div>'; }).join('') : '<div style="font-size:10pt;color:#999;font-style:italic;">Aucun axe suffisamment avancé pour l\'instant</div>')
+    + '</div>'
+    + '<div style="flex:1;"><div style="font-size:10pt;font-weight:700;color:#c49000;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Points de vigilance</div>'
+    + (fv.vigilance.length ? fv.vigilance.map(function(v){ return '<div style="font-size:10pt;color:#444;margin-bottom:4px;">• ' + v.texte + '</div>'; }).join('') : '<div style="font-size:10pt;color:#999;font-style:italic;">Rien de particulier à signaler</div>')
+    + '</div></div>';
+
   var axesLignes = DIAG_FUSION_AXES.filter(function(a){ return !a.factuel; }).map(function(axe) {
-    var val = axe.sousScore ? reponses[axe.id + '_m'] : reponses[axe.id];
-    var texte = (val !== undefined && DIAG_FUSION_INTERPRETATIONS[axe.id]) ? DIAG_FUSION_INTERPRETATIONS[axe.id][val] : 'Non évalué';
+    var lignesTexte = '';
+    if (axe.sousScore) {
+      var m = reponses[axe.id + '_m'], n = reponses[axe.id + '_n'];
+      lignesTexte = (m !== undefined ? '<div style="margin-bottom:4px;"><strong>Maturité :</strong> ' + DIAG_FUSION_INTERPRETATIONS[axe.id][m] + '</div>' : '')
+        + (n !== undefined ? '<div><strong>Nouveauté :</strong> ' + axe.niveauxNouveaute[n] + '</div>' : '');
+      if (!lignesTexte) lignesTexte = 'Non évalué';
+    } else {
+      var v = reponses[axe.id];
+      lignesTexte = v !== undefined ? DIAG_FUSION_INTERPRETATIONS[axe.id][v] : 'Non évalué';
+    }
+    var val = axe.sousScore ? reponses[axe.id+'_m'] : reponses[axe.id];
     var paliers = '';
     for (var i = 0; i < 4; i++) {
       var rempli = (val !== undefined && i <= val);
       paliers += '<span style="display:inline-block;width:22px;height:8px;border-radius:4px;margin-right:3px;background:' + (rempli ? axe.color : '#E0E0DC') + ';"></span>';
     }
     return '<tr>'
-      + '<td style="font-weight:700;color:#1A1A1A;vertical-align:top;padding:10px 12px;border-left:4px solid ' + axe.color + ';width:26%;">' + axe.label + '</td>'
-      + '<td style="vertical-align:middle;padding:10px 12px;width:14%;">' + paliers + '</td>'
-      + '<td style="vertical-align:top;padding:10px 12px;font-size:10pt;color:#444;">' + texte + '</td>'
+      + '<td style="font-weight:700;color:#1A1A1A;vertical-align:top;padding:10px 12px;border-left:4px solid ' + axe.color + ';width:24%;">' + axe.label + '</td>'
+      + '<td style="vertical-align:top;padding:10px 12px;width:14%;">' + paliers + '</td>'
+      + '<td style="vertical-align:top;padding:10px 12px;font-size:10pt;color:#444;">' + lignesTexte + '</td>'
     + '</tr>';
   }).join('');
 
-  var outilsHtml = renderOutilsSuggeres(verdict, phase);
+  var outilsHtml = verdict === 'retenu' ? renderOutilsSuggeres(verdict, phase) : '';
+
+  var reorientationHtml = '';
+  if (verdict === 'reoriente') {
+    var structure = currentProjet.diagDecouverte.structureRecommandee || '';
+    var raison = currentProjet.diagDecouverte.raisonReorientation || '';
+    reorientationHtml = '<div style="margin-top:20px;padding:16px 20px;background:#E3516D10;border-left:4px solid #E3516D;border-radius:0 8px 8px 0;">'
+      + '<div style="font-size:11pt;font-weight:700;color:#1A1A1A;margin-bottom:8px;">Vers où continuer</div>'
+      + (structure ? '<div style="font-size:11pt;font-weight:700;color:#E3516D;margin-bottom:4px;">' + structure + '</div>' : '<div style="font-size:10pt;color:#999;font-style:italic;">Structure à préciser avec votre contact Vipe</div>')
+      + (raison ? '<div style="font-size:10pt;color:#444;margin-bottom:10px;">' + raison + '</div>' : '')
+      + '<div style="font-size:10pt;color:#444;font-style:italic;">Vous pouvez revenir vers nous une fois ces points travaillés.</div>'
+      + '</div>';
+  }
+
+  var verdictBadge = incomplet
+    ? '<span style="display:inline-flex;align-items:center;gap:6px;background:#F4F4F2;color:#666;font-weight:700;padding:8px 16px;border-radius:8px;font-size:12pt;">Diagnostic en cours — verdict provisoire</span>'
+    : '<span style="display:inline-flex;align-items:center;gap:6px;background:' + verdictColors[verdict] + '20;color:' + verdictColors[verdict] + ';font-weight:700;padding:8px 16px;border-radius:8px;font-size:12pt;">' + verdictLabels[verdict] + '</span>';
 
   var win = window.open('', '_blank');
   win.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">'
@@ -7141,21 +7226,19 @@ function genererLivrableFusion() {
       + '</div>'
     + '</div>'
     + '<div style="display:flex;gap:10px;margin-bottom:24px;">'
-      + '<span style="display:inline-flex;align-items:center;gap:6px;background:' + verdictColors[verdict] + '20;color:' + verdictColors[verdict] + ';font-weight:700;padding:8px 16px;border-radius:8px;font-size:12pt;">' + verdictLabels[verdict] + '</span>'
+      + verdictBadge
       + '<span style="display:inline-flex;align-items:center;gap:6px;background:#F4F4F2;color:#666;font-weight:700;padding:8px 16px;border-radius:8px;font-size:12pt;">Votre projet est en phase ' + niveauLabel + '</span>'
     + '</div>'
-    + '<h2 style="font-size:13pt;border-bottom:2px solid #FCC200;padding-bottom:6px;">Où vous en êtes, par domaine</h2>'
+    + syntheseHtml
+    + reorientationHtml
+    + '<h2 style="font-size:13pt;border-bottom:2px solid #FCC200;padding-bottom:6px;margin-top:24px;">Où vous en êtes, par domaine</h2>'
     + '<table>' + axesLignes + '</table>'
     + (outilsHtml ? '<div style="margin-top:20px;">' + outilsHtml + '</div>' : '')
     + '<div style="margin-top:24px;padding-top:14px;border-top:1px solid #E0E0DC;font-size:10pt;color:#666;">'
       + 'Votre contact : ' + consultant.nom + ' · ' + consultant.email + ' · ' + consultant.tel
     + '</div>'
     + '<div class="no-print" style="margin-top:24px;text-align:center;padding:20px;">'
-      + '<button onclick="window.print()" style="font-family:Arial;font-size:13px;font-weight:700;color:#1A1A1A;background:#FCC200;border:none;border-radius:8px;padding:12px 32px;cursor:pointer;">🖨 Imprimer / Exporter PDF</button>'
-    + '</div>'
-    + '</body></html>');
-  win.document.close();
-}
+      + '<button onclick="window.print()" style="font-family:Arial;font-size:13px;font-weight:700;color:#1A1A1A;background
    
    // ============================================================
 // SAISIE DIAGNOSTIC FUSIONNÉ — remplace repondreDecouverte
