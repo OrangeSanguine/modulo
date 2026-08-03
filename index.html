@@ -7238,9 +7238,12 @@ function genererLivrableFusion() {
       + 'Votre contact : ' + consultant.nom + ' · ' + consultant.email + ' · ' + consultant.tel
     + '</div>'
     + '<div class="no-print" style="margin-top:24px;text-align:center;padding:20px;">'
-      + '<button onclick="window.print()" style="font-family:Arial;font-size:13px;font-weight:700;color:#1A1A1A;background
-   
-   // ============================================================
+      + '<button onclick="window.print()" style="font-family:Arial;font-size:13px;font-weight:700;color:#1A1A1A;background:#FCC200;border:none;border-radius:8px;padding:12px 32px;cursor:pointer;">🖨 Imprimer / Exporter PDF</button>'
+    + '</div>'
+    + '</body></html>');
+  win.document.close();
+}
+// ============================================================
 // SAISIE DIAGNOSTIC FUSIONNÉ — remplace repondreDecouverte
 // ============================================================
 function repondreDecouverteAxe(axeId, champ, val) {
