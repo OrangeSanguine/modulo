@@ -7034,7 +7034,8 @@ function renderDiagFusion(projet) {
     + '</div></div>' + outilsHtml
     + '<button class="diag-btn-enregistrer" onclick="enregistrerDiagFusion()" ' + (nbReponses===0?'disabled':'') + '>'
     + (nbReponses===0?'Répondez à au moins un axe':'Enregistrer le diagnostic') + '</button>'
-    + '</div></div>';
+    + '</div></div>'
+    + (diag.statut === 'realise' ? '<button onclick="genererLivrableFusion()" style="width:100%;margin-top:8px;font-family:var(--font);font-size:13px;font-weight:600;color:var(--blanc);background:var(--noir);border:none;border-radius:var(--radius);padding:12px;cursor:pointer;">📄 Générer le livrable</button>' : '');
 }
 
 function renderOutilsSuggeres(verdict, phase) {
@@ -7049,7 +7050,114 @@ function renderOutilsSuggeres(verdict, phase) {
   return '<div class="diag-reco visible" style="margin-top:12px;"><strong>Outils suggérés :</strong><br>' + items.join('<br>') + '</div>';
 }
    
-// ============================================================
+var DIAG_FUSION_INTERPRETATIONS = {
+  valeur: [
+    "Le problème que vous résolvez et la solution envisagée sont encore en cours de clarification.",
+    "Votre proposition est structurée et commence à être validée par de premiers clients.",
+    "Votre solution est validée sur un marché restreint, avec une différenciation confirmée.",
+    "Votre proposition est éprouvée, reconnue comme innovante, et s'étend déjà à d'autres marchés.",
+  ],
+  marche: [
+    "La connaissance de votre marché est encore à construire, c'est une étape normale à ce stade.",
+    "La segmentation de votre marché est en cours, avec de premiers prospects identifiés.",
+    "Vous avez déjà des clients pilotes ou de premières ventes, avec des retours structurés.",
+    "Votre traction commerciale est forte, sur un marché déjà validé, en expansion.",
+  ],
+  produit: [
+    "Vous avez un concept défini, mais rien de fonctionnel n'est encore développé : la faisabilité reste à démontrer.",
+    "Une première version fonctionne déjà : la faisabilité est démontrée.",
+    "Votre produit fonctionne et est finalisé ; le passage à plus grande échelle est en cours de validation.",
+    "Votre produit ou service est déjà déployé à grande échelle, avec une amélioration continue.",
+  ],
+  modele: [
+    "Votre modèle économique reste à définir précisément.",
+    "Votre modèle est testé auprès des premiers clients, avec de premières sources de revenus.",
+    "Votre modèle est stable, la rentabilité est en cours de validation.",
+    "Votre modèle est éprouvé, avec un chiffre d'affaires récurrent.",
+  ],
+  equipe: [
+    "Le projet est aujourd'hui porté par une seule personne, sans équipe structurée.",
+    "Une équipe technique initiale est constituée, avec des compétences encore partielles.",
+    "Votre équipe est opérationnelle, avec des rôles bien définis.",
+    "Votre organisation est optimisée, avec une équipe complète.",
+  ],
+  ressources: [
+    "Vos besoins en équipements ou outils ne sont pas encore clairement définis.",
+    "Vous êtes en recherche des équipements ou infrastructures adaptés.",
+    "Votre infrastructure est opérationnelle, avec un développement technologique avancé.",
+    "Vous disposez d'un système robuste, avec des process automatisés.",
+  ],
+  fonds: [
+    "Vous ne disposez pas encore de ressources propres mobilisables pour ce projet.",
+    "Vos ressources sont limitées, elles couvrent quelques mois de fonctionnement.",
+    "Vos ressources vous permettent de tenir la phase actuelle du projet.",
+    "Vos ressources sont solides, avec un autofinancement ou une levée déjà engagée.",
+  ],
+};
+
+function genererLivrableFusion() {
+  if (!currentProjet || !currentProjet.diagDecouverte) return;
+  var reponses = currentProjet.diagDecouverte.reponses || {};
+  reponses['dis'] = calculerNiveauDIS(currentProjet.dis);
+
+  var scorePhase = calculerScorePhase(reponses);
+  var scoreElig = calculerScoreEligibilite(reponses);
+  var phase = calculerPhaseDepuisScore(scorePhase);
+  var verdict = calculerVerdictEligibilite(scoreElig);
+  var verdictLabels = { 'retenu': 'Projet retenu', 'a-examiner': 'Projet à examiner en collectif', 'reoriente': 'Projet réorienté' };
+  var verdictColors = { 'retenu': '#33B5A1', 'a-examiner': '#c49000', 'reoriente': '#E3516D' };
+  var niveauLabel = phase === 1 ? 'Idéation' : phase === 2 ? 'Prototypage' : phase === 3 ? 'Mise en Marché' : 'Scale-up';
+  var consultant = CONSULTANTS.find(function(c) { return c.id === currentProjet.consultant; }) || { nom: 'Vipe Technopole', email: 'contact@vipe-technopole.bzh', tel: '02 97 68 14 00' };
+  var dateStr = currentProjet.diagDecouverte.date ? (function(){ var p = currentProjet.diagDecouverte.date.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; })() : new Date().toLocaleDateString('fr-FR');
+
+  var axesLignes = DIAG_FUSION_AXES.filter(function(a){ return !a.factuel; }).map(function(axe) {
+    var val = axe.sousScore ? reponses[axe.id + '_m'] : reponses[axe.id];
+    var texte = (val !== undefined && DIAG_FUSION_INTERPRETATIONS[axe.id]) ? DIAG_FUSION_INTERPRETATIONS[axe.id][val] : 'Non évalué';
+    var paliers = '';
+    for (var i = 0; i < 4; i++) {
+      var rempli = (val !== undefined && i <= val);
+      paliers += '<span style="display:inline-block;width:22px;height:8px;border-radius:4px;margin-right:3px;background:' + (rempli ? axe.color : '#E0E0DC') + ';"></span>';
+    }
+    return '<tr>'
+      + '<td style="font-weight:700;color:#1A1A1A;vertical-align:top;padding:10px 12px;border-left:4px solid ' + axe.color + ';width:26%;">' + axe.label + '</td>'
+      + '<td style="vertical-align:middle;padding:10px 12px;width:14%;">' + paliers + '</td>'
+      + '<td style="vertical-align:top;padding:10px 12px;font-size:10pt;color:#444;">' + texte + '</td>'
+    + '</tr>';
+  }).join('');
+
+  var outilsHtml = renderOutilsSuggeres(verdict, phase);
+
+  var win = window.open('', '_blank');
+  win.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">'
+    + '<title>Diagnostic — ' + currentProjet.nom + '</title>'
+    + '<style>body{font-family:Arial,sans-serif;margin:0;padding:32px;color:#1A1A1A;font-size:11pt;line-height:1.5;}'
+    + 'table{width:100%;border-collapse:collapse;}td{border-bottom:1px solid #E0E0DC;}'
+    + '@media print{.no-print{display:none;}}</style></head><body>'
+    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;padding-bottom:16px;border-bottom:3px solid #FCC200;">'
+      + '<div>'
+        + '<div style="font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;margin-bottom:6px;">VIPE TECHNOPOLE</div>'
+        + '<div style="font-size:20pt;font-weight:900;color:#1A1A1A;margin-bottom:4px;">' + currentProjet.nom + '</div>'
+        + '<div style="font-size:11pt;color:#666;">Diagnostic du ' + dateStr + ' · ' + consultant.nom + '</div>'
+      + '</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;margin-bottom:24px;">'
+      + '<span style="display:inline-flex;align-items:center;gap:6px;background:' + verdictColors[verdict] + '20;color:' + verdictColors[verdict] + ';font-weight:700;padding:8px 16px;border-radius:8px;font-size:12pt;">' + verdictLabels[verdict] + '</span>'
+      + '<span style="display:inline-flex;align-items:center;gap:6px;background:#F4F4F2;color:#666;font-weight:700;padding:8px 16px;border-radius:8px;font-size:12pt;">Votre projet est en phase ' + niveauLabel + '</span>'
+    + '</div>'
+    + '<h2 style="font-size:13pt;border-bottom:2px solid #FCC200;padding-bottom:6px;">Où vous en êtes, par domaine</h2>'
+    + '<table>' + axesLignes + '</table>'
+    + (outilsHtml ? '<div style="margin-top:20px;">' + outilsHtml + '</div>' : '')
+    + '<div style="margin-top:24px;padding-top:14px;border-top:1px solid #E0E0DC;font-size:10pt;color:#666;">'
+      + 'Votre contact : ' + consultant.nom + ' · ' + consultant.email + ' · ' + consultant.tel
+    + '</div>'
+    + '<div class="no-print" style="margin-top:24px;text-align:center;padding:20px;">'
+      + '<button onclick="window.print()" style="font-family:Arial;font-size:13px;font-weight:700;color:#1A1A1A;background:#FCC200;border:none;border-radius:8px;padding:12px 32px;cursor:pointer;">🖨 Imprimer / Exporter PDF</button>'
+    + '</div>'
+    + '</body></html>');
+  win.document.close();
+}
+   
+   // ============================================================
 // SAISIE DIAGNOSTIC FUSIONNÉ — remplace repondreDecouverte
 // ============================================================
 function repondreDecouverteAxe(axeId, champ, val) {
