@@ -5214,9 +5214,14 @@ function initEtape2() {
     depEl.innerHTML = '';
     if (!newProjData._diagDecouverte) newProjData._diagDecouverte = {};
 
-    DIAG_DECOUVERTE_AXES.forEach(function(axe, i) {
-      var niveaux = DIAG_DECOUVERTE_NIVEAUX;
+DIAG_FUSION_AXES.filter(function(a){ return !a.factuel; }).forEach(function(axe, i) {
       var valActuelle = newProjData._diagDecouverte[axe.id] || null;
+      var champs = axe.sousScore ? [
+        { suffix: 'm', q: axe.question, niveaux: axe.niveaux },
+        { suffix: 'n', q: axe.questionNouveaute, niveaux: axe.niveauxNouveaute, dependsOn: axe.id + '_m' },
+      ] : [
+        { suffix: '', q: axe.question, niveaux: axe.niveaux },
+      ];
 
       var axeEl = document.createElement('div');
       axeEl.style.cssText = 'margin-bottom:16px;background:var(--blanc);border:1.5px solid var(--gris-moyen);border-radius:var(--radius);padding:14px 16px;';
@@ -5227,37 +5232,45 @@ function initEtape2() {
         + '<div style="font-size:13px;font-weight:700;color:var(--noir);">' + axe.label + '</div>';
       axeEl.appendChild(headerEl);
 
-      var niveauxEl = document.createElement('div');
-      niveauxEl.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+      champs.forEach(function(champ) {
+        if (champ.dependsOn && !newProjData._diagDecouverte[champ.dependsOn]) return;
+        var cle = champ.suffix ? (axe.id + '_' + champ.suffix) : axe.id;
+        var valChamp = newProjData._diagDecouverte[cle] || null;
 
-      niveaux.forEach(function(n) {
-        var btnEl = document.createElement('div');
-        var isSelected = valActuelle === n.val;
-        btnEl.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:var(--radius-sm);border:1.5px solid ' + (isSelected ? axe.color : 'var(--gris-moyen)') + ';background:' + (isSelected ? axe.color + '15' : 'var(--gris-clair)') + ';cursor:pointer;transition:all 0.15s;';
+        var qEl = document.createElement('div');
+        qEl.style.cssText = 'font-size:12px;color:var(--gris-texte);margin:10px 0 6px;';
+        qEl.textContent = champ.q;
+        axeEl.appendChild(qEl);
 
-        var radioEl = document.createElement('div');
-        radioEl.style.cssText = 'width:16px;height:16px;border-radius:50%;border:2px solid ' + (isSelected ? axe.color : 'var(--gris-moyen)') + ';flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;background:' + (isSelected ? axe.color : 'transparent') + ';';
-        if (isSelected) {
-          var dot = document.createElement('div');
-          dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:var(--blanc);';
-          radioEl.appendChild(dot);
-        }
+        var niveauxEl = document.createElement('div');
+        niveauxEl.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
 
-        var labelEl = document.createElement('div');
-        labelEl.style.cssText = 'font-size:12px;font-weight:' + (isSelected ? '600' : '400') + ';color:' + (isSelected ? axe.color : 'var(--gris-texte)') + ';line-height:1.4;';
-        labelEl.textContent = 'Niveau ' + n.val + ' — ' + n.labels[i];
+        champ.niveaux.forEach(function(label, ni) {
+          var btnEl = document.createElement('div');
+          var isSelected = valChamp === ni;
+          btnEl.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:var(--radius-sm);border:1.5px solid ' + (isSelected ? axe.color : 'var(--gris-moyen)') + ';background:' + (isSelected ? axe.color + '15' : 'var(--gris-clair)') + ';cursor:pointer;transition:all 0.15s;';
 
-        btnEl.appendChild(radioEl);
-        btnEl.appendChild(labelEl);
+          var radioEl = document.createElement('div');
+          radioEl.style.cssText = 'width:16px;height:16px;border-radius:50%;border:2px solid ' + (isSelected ? axe.color : 'var(--gris-moyen)') + ';flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;background:' + (isSelected ? axe.color : 'transparent') + ';';
+          if (isSelected) {
+            var dot = document.createElement('div');
+            dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:var(--blanc);';
+            radioEl.appendChild(dot);
+          }
 
-        btnEl.setAttribute('data-axe', axe.id);
-        btnEl.setAttribute('data-val', n.val);
-        btnEl.onclick = function() { selectionnerNiveauDecouverte(axe.id, n.val, axe.color); };
+          var labelEl = document.createElement('div');
+          labelEl.style.cssText = 'font-size:12px;font-weight:' + (isSelected ? '600' : '400') + ';color:' + (isSelected ? axe.color : 'var(--gris-texte)') + ';line-height:1.4;';
+          labelEl.textContent = label;
 
-        niveauxEl.appendChild(btnEl);
+          btnEl.appendChild(radioEl);
+          btnEl.appendChild(labelEl);
+          btnEl.onclick = function() { selectionnerNiveauFusionAxe(axe.id, champ.suffix, ni); };
+          niveauxEl.appendChild(btnEl);
+        });
+
+        axeEl.appendChild(niveauxEl);
       });
 
-      axeEl.appendChild(niveauxEl);
       depEl.appendChild(axeEl);
     });
   }
@@ -5278,37 +5291,35 @@ function initEtape2() {
   }
 }
 
-function selectionnerNiveauDecouverte(axeId, val, color) {
+function selectionnerNiveauFusionAxe(axeId, champ, val) {
   if (!newProjData._diagDecouverte) newProjData._diagDecouverte = {};
-  newProjData._diagDecouverte[axeId] = val;
+  var cle = champ ? (axeId + '_' + champ) : axeId;
+  newProjData._diagDecouverte[cle] = val;
 
-  // Recalculer le score et la phase
-  var score = calculerScoreDecouverte(newProjData._diagDecouverte);
-  var phase = calculerPhaseDepuisScore(score);
+  var scorePhase = calculerScorePhase(newProjData._diagDecouverte);
+  var scoreElig = calculerScoreEligibilite(newProjData._diagDecouverte);
+  var phase = calculerPhaseDepuisScore(scorePhase);
+  var verdict = calculerVerdictEligibilite(scoreElig);
   newProjData.phase = String(phase);
 
-  // Mettre à jour l'affichage
   initEtape2();
 
-  // Afficher le score
   var scoreEl = document.getElementById('diag-decouverte-score');
   var nbReponses = Object.keys(newProjData._diagDecouverte).length;
   if (scoreEl && nbReponses > 0) {
-    var pct = Math.round(score * 100);
+    var verdictLabels = { 'retenu': 'Retenu', 'a-examiner': 'À examiner', 'reoriente': 'Réorienté' };
+    var verdictColors = { 'retenu': '#33B5A1', 'a-examiner': '#c49000', 'reoriente': '#E3516D' };
     var phaseColor = PHASE_COLORS[phase] || '#FCC200';
     var niveauLabel = phase === 1 ? 'Idéation' : phase === 2 ? 'Prototypage' : phase === 3 ? 'Mise en Marché' : 'Scale-up';
     scoreEl.style.display = 'block';
-    scoreEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'
-      + '<div style="display:flex;align-items:center;gap:12px;">'
-        + '<div style="font-size:28px;font-weight:900;color:var(--noir);">' + pct + '%</div>'
-        + '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gris-texte);">Maturité du projet</div>'
-        + '<div style="font-size:12px;color:var(--gris-texte);">' + nbReponses + '/6 axes évalués</div></div>'
-      + '</div>'
+    scoreEl.innerHTML = '<div style="display:flex;gap:12px;flex-wrap:wrap;">'
       + '<div style="display:flex;align-items:center;gap:8px;background:' + phaseColor + '20;border:1.5px solid ' + phaseColor + '40;border-radius:var(--radius);padding:8px 16px;">'
-        + '<div style="width:10px;height:10px;border-radius:50%;background:' + phaseColor + ';"></div>'
-        + '<div style="font-size:13px;font-weight:700;color:' + phaseColor + ';">Phase ' + phase + ' — ' + niveauLabel + '</div>'
-      + '</div>'
-    + '</div>';
+        + '<div style="font-size:20px;font-weight:900;">' + Math.round(scorePhase*100) + '%</div>'
+        + '<div style="font-size:12px;font-weight:700;color:' + phaseColor + ';">Phase — ' + niveauLabel + '</div></div>'
+      + '<div style="display:flex;align-items:center;gap:8px;background:' + verdictColors[verdict] + '20;border:1.5px solid ' + verdictColors[verdict] + '40;border-radius:var(--radius);padding:8px 16px;">'
+        + '<div style="font-size:20px;font-weight:900;">' + Math.round(scoreElig*100) + '%</div>'
+        + '<div style="font-size:12px;font-weight:700;color:' + verdictColors[verdict] + ';">Éligibilité — ' + verdictLabels[verdict] + '</div></div>'
+      + '</div>';
   }
 }
    
@@ -6444,62 +6455,119 @@ var DIAG_DIGITAL_AXES = [
 // ============================================================
 // DIAGNOSTIC DÉCOUVERTE
 // ============================================================
-var DIAG_DECOUVERTE_AXES = [
-  { id: 'valeur',     label: 'Proposition de valeur',                      color: '#FCC200' },
-  { id: 'marche',     label: 'Marché & Traction commerciale',               color: '#E3516D' },
-  { id: 'produit',    label: 'Produit / Service & Industrialisation',       color: '#7687C2' },
-  { id: 'modele',     label: 'Modèle économique & Viabilité financière',    color: '#33B5A1' },
-  { id: 'equipe',     label: 'Organisation & Équipe',                       color: '#5DC4E1' },
-  { id: 'ressources', label: 'Ressources & Besoins technologiques',         color: '#E8A838' },
+// ============================================================
+// DIAGNOSTIC FUSIONNÉ — 8 AXES (remplace DIAG_DECOUVERTE_AXES et DIAG_DECOUVERTE_NIVEAUX)
+// ============================================================
+var DIAG_FUSION_AXES = [
+  {
+    id: 'valeur', label: 'Proposition de valeur', color: '#FCC200',
+    poidsPhase: 1, poidsElig: 2,
+    question: "Où en êtes-vous avec votre proposition de valeur ?",
+    questionOpt: "Qu'est-ce qui vous fait dire que les clients trouvent votre solution différente de ce qu'ils utilisaient avant ?",
+    niveaux: [
+      "Problématique en cours de définition, aucune validation client",
+      "Proposition structurée, premières validations clients",
+      "Solution validée sur un marché restreint, différenciation confirmée",
+      "Proposition éprouvée, reconnue comme innovante, extension à d'autres marchés",
+    ],
+  },
+  {
+    id: 'marche', label: 'Marché & Traction commerciale', color: '#E3516D',
+    poidsPhase: 1, poidsElig: 2,
+    question: "Où en êtes-vous sur votre marché ?",
+    questionOpt: "Sur quelles données vous appuyez-vous pour connaître la taille et la concurrence de votre marché ?",
+    niveaux: [
+      "Pas d'étude de marché, hypothèses non validées",
+      "Segmentation en cours, premiers prospects identifiés",
+      "Premiers clients pilotes ou ventes, retour structuré",
+      "Traction forte, marché validé, expansion en cours",
+    ],
+  },
+  {
+    id: 'produit', label: 'Produit / Service & Industrialisation', color: '#7687C2',
+    poidsPhase: 1, poidsElig: 3, sousScore: true,
+    question: "Où en est le développement de votre produit ou service ?",
+    questionOpt: "Qu'est-ce qui reste à démontrer ou à résoudre avant l'étape suivante ?",
+    niveaux: [
+      "Concept défini, rien de fonctionnel encore développé",
+      "Une première version fonctionne, faisabilité démontrée",
+      "Version aboutie et fiable, passage à plus grande échelle validé",
+      "Déployé à grande échelle, amélioration continue",
+    ],
+    questionNouveaute: "Quel est le principal verrou technique qu'il vous reste à résoudre, et diriez-vous qu'il a déjà été résolu ailleurs, ou que personne n'a encore trouvé la solution ?",
+    niveauxNouveaute: [
+      "Combinaison de solutions existantes",
+      "Adaptation sans incertitude technique",
+      "Développement avec incertitude partielle",
+      "Verrou technique réel, résultat non garanti",
+    ],
+  },
+  {
+    id: 'modele', label: 'Modèle économique & Viabilité financière', color: '#33B5A1',
+    poidsPhase: 1, poidsElig: 3, sousScore: true,
+    question: "Où en êtes-vous sur votre modèle économique ?",
+    questionOpt: "Comment gagnez-vous ou comptez-vous gagner de l'argent avec ce projet ?",
+    niveaux: [
+      "Modèle économique à définir ou en cours de définition",
+      "Modèle testé sur premiers clients, premières sources de revenus",
+      "Modèle stable, rentabilité en cours de validation",
+      "Business model éprouvé, CA récurrent",
+    ],
+    questionNouveaute: "D'autres acteurs vendent-ils déjà de cette façon sur votre marché ? Si oui, qu'est-ce qui vous différencie ?",
+    niveauxNouveaute: [
+      "Modèle standard du secteur",
+      "Variante mineure d'un modèle existant",
+      "Éléments nouveaux, valeur partiellement modifiée",
+      "Rupture de valeur ou d'usage sur le marché",
+    ],
+  },
+  {
+    id: 'equipe', label: 'Organisation & Équipe', color: '#5DC4E1',
+    poidsPhase: 1, poidsElig: 2,
+    question: "Où en est votre équipe ?",
+    questionOpt: "Qui couvre quoi aujourd'hui (technique, commercial, gestion) ?",
+    niveaux: [
+      "Projet porté par une seule personne ou équipe non structurée",
+      "Équipe technique initiale constituée, compétences encore partielles",
+      "Équipe opérationnelle avec rôles bien définis",
+      "Organisation optimisée, équipe complète",
+    ],
+  },
+  {
+    id: 'ressources', label: 'Ressources & Besoins technologiques', color: '#E8A838',
+    poidsPhase: 1, poidsElig: 1,
+    question: "Où en êtes-vous sur vos moyens (équipements, infrastructure, outils) ?",
+    questionOpt: "Si un besoin n'est pas couvert, avez-vous identifié comment y répondre ?",
+    niveaux: [
+      "Besoins non clairement définis, absence de plan structuré",
+      "Recherche d'équipements ou infrastructures en cours, prototypage en cours",
+      "Infrastructure opérationnelle, développement technologique avancé",
+      "Système robuste, process automatisés, innovation continue",
+    ],
+  },
+  {
+    id: 'fonds', label: 'Fonds propres mobilisables', color: '#F9D3E6',
+    poidsPhase: 1, poidsElig: 2,
+    question: "Où en êtes-vous sur vos ressources financières propres ?",
+    questionOpt: "De quelles ressources personnelles ou déjà obtenues disposez-vous pour financer ce projet ?",
+    niveaux: [
+      "Aucune ressource propre mobilisable",
+      "Ressources limitées, quelques mois de fonctionnement",
+      "Ressources permettant de tenir la phase visée",
+      "Ressources solides, autofinancement ou levée engagée",
+    ],
+  },
+  {
+    id: 'dis', label: 'Alignement territoire (DIS)', color: '#999999',
+    poidsPhase: 0, poidsElig: 1, factuel: true,
+    niveaux: [
+      "Aucun lien identifié",
+      "Lien indirect ou secondaire",
+      "Correspond à un domaine d'innovation stratégique régional",
+      "DIS prioritaire pour le territoire",
+    ],
+  },
 ];
-
-var DIAG_DECOUVERTE_NIVEAUX = [
-  {
-    val: 1, score: 0.25,
-    labels: [
-      'Problématique en cours de définition, absence de validation clients',
-      'Pas d\'étude de marché, hypothèses non validées ou en cours de validation',
-      'Concept défini mais pas de prototype, faisabilité à démontrer',
-      'Modèle économique à définir ou en cours de définition',
-      'Projet porté par une seule personne ou équipe non structurée',
-      'Besoins non clairement définis, absence de plan de financement structuré',
-    ]
-  },
-  {
-    val: 2, score: 0.5,
-    labels: [
-      'Proposition de valeur structurée, premières validations clients, tests d\'usage en cours',
-      'Segmentation et analyse du marché en cours, premiers prospects identifiés',
-      'POC ou MVP développé, faisabilité technique démontrée',
-      'Modèle testé sur des premiers clients, premières sources de revenus',
-      'Équipe technique initiale constituée avec des compétences encore partielles',
-      'Recherche d\'équipements ou infrastructures adaptées, prototypage en cours',
-    ]
-  },
-  {
-    val: 3, score: 0.75,
-    labels: [
-      'Solution validée sur un marché restreint, différenciation confirmée',
-      'Premiers clients pilotes / premières ventes, retour utilisateur structuré',
-      'Produit/service finalisé, processus d\'industrialisation ou de déploiement validé',
-      'Modèle économique stable, rentabilité en cours de validation',
-      'Équipe opérationnelle avec rôles bien définis, structuration des processus internes',
-      'Infrastructure opérationnelle, développement technologique avancé',
-    ]
-  },
-  {
-    val: 4, score: 1.0,
-    labels: [
-      'Proposition éprouvée, reconnue comme innovante, extension à d\'autres marchés',
-      'Traction forte, marché validé, expansion en cours',
-      'Production à grande échelle, optimisation des coûts, amélioration continue',
-      'Business model éprouvé, CA récurrent, levée de fonds Série A/B ou autofinancement viable',
-      'Organisation optimisée, équipe complète, structuration RH avancée',
-      'Système robuste, process automatisés, innovation continue',
-    ]
-  },
-];
-
 // Mapping score → phase MODULO
 function calculerPhaseDepuisScore(scoreMoyen) {
   if (scoreMoyen <= 0.37) return 1; // Idéation
@@ -6512,30 +6580,51 @@ function calculerPhaseDepuisScore(scoreMoyen) {
 function calculerBesoinsDepuisReponses(reponses) {
   var besoins = [];
   var r = reponses || {};
-  // Proposition de valeur faible → Études & Conseil
-  if (r['valeur'] && r['valeur'] <= 2) besoins.push('Études & conseil / diagnostic');
-  // Produit/service en cours → Prototypage
-  if (r['produit'] && r['produit'] <= 2) besoins.push('Prototypage / POC / MVP');
-  // Modèle économique non défini → Conseil
-  if (r['modele'] && r['modele'] <= 2) besoins.push('Études & conseil / diagnostic');
-  // Ressources → R&D
-  if (r['ressources'] && r['ressources'] <= 3) besoins.push('R&D & développement technologique');
-  // Équipe incomplète → Recrutement
-  if (r['equipe'] && r['equipe'] <= 2) besoins.push('Recrutement & compétences');
-  // Dédupliquer
+  if (r['valeur'] !== undefined && r['valeur'] <= 1) besoins.push('Études & conseil / diagnostic');
+  if (r['produit_m'] !== undefined && r['produit_m'] <= 1) besoins.push('Prototypage / POC / MVP');
+  if (r['modele_m'] !== undefined && r['modele_m'] <= 1) besoins.push('Études & conseil / diagnostic');
+  if (r['ressources'] !== undefined && r['ressources'] <= 2) besoins.push('R&D & développement technologique');
+  if (r['equipe'] !== undefined && r['equipe'] <= 1) besoins.push('Recrutement & compétences');
   return besoins.filter(function(b, i) { return besoins.indexOf(b) === i; });
 }
 
-function calculerScoreDecouverte(reponses) {
-  var axes = DIAG_DECOUVERTE_AXES;
-  var scores = axes.map(function(axe, i) {
-    var val = reponses[axe.id];
-    var niveau = DIAG_DECOUVERTE_NIVEAUX.find(function(n) { return n.val === val; });
-    return niveau ? niveau.score : null;
+// ============================================================
+// CALCULS DIAGNOSTIC FUSIONNÉ — remplace calculerScoreDecouverte
+// ============================================================
+function calculerScorePhase(reponses) {
+  var total = 0, poidsTotal = 0;
+  DIAG_FUSION_AXES.forEach(function(axe) {
+    if (axe.poidsPhase === 0) return; // DIS exclu du score Phase
+    var val = axe.sousScore ? reponses[axe.id + '_m'] : reponses[axe.id];
+    if (val === undefined || val === null) return;
+    total += val * axe.poidsPhase;
+    poidsTotal += 3 * axe.poidsPhase;
   });
-  var valides = scores.filter(function(s) { return s !== null; });
-  if (valides.length === 0) return 0;
-  return valides.reduce(function(a, b) { return a + b; }, 0) / valides.length;
+  return poidsTotal === 0 ? 0 : total / poidsTotal;
+}
+
+function calculerScoreEligibilite(reponses) {
+  var total = 0, poidsTotal = 0;
+  DIAG_FUSION_AXES.forEach(function(axe) {
+    var val = axe.sousScore ? reponses[axe.id + '_n'] : reponses[axe.id];
+    if (val === undefined || val === null) return;
+    total += val * axe.poidsElig;
+    poidsTotal += 3 * axe.poidsElig;
+  });
+  return poidsTotal === 0 ? 0 : total / poidsTotal;
+}
+
+function calculerVerdictEligibilite(scoreElig) {
+  var pct = scoreElig * 100;
+  if (pct >= 60) return 'retenu';
+  if (pct >= 38) return 'a-examiner';
+  return 'reoriente';
+}
+
+// Niveau DIS calculé automatiquement — à affiner avec Mathilde
+// (le champ actuel ne distingue que Oui/Non + lequel, pas de notion de priorité)
+function calculerNiveauDIS(disId) {
+  return disId ? 2 : 0;
 }
 var DIAG_DIGITAL_QUESTIONS = [
   { id: 'D01', num: 1, axe: 'Compétences & Talents', axeColor: '#FCC200',
@@ -6711,7 +6800,7 @@ function renderDiagnostics(projet, diagOuvert) {
     return;
   }
   if (diagOuvert === 'Decouverte') {
-    renderDiagDecouverte(projet);
+    renderDiagFusion(projet);
     return;
   }
 
@@ -6757,23 +6846,24 @@ function renderDiagnostics(projet, diagOuvert) {
      // Diagnostic Découverte
     (function() {
       var diagD = projet.diagDecouverte || { reponses: {}, statut: 'non-demarre' };
-      var nbRepD = Object.keys(diagD.reponses || {}).length;
-      var scoreD = nbRepD > 0 ? calculerScoreDecouverte(diagD.reponses) : 0;
-      var scorePctD = Math.round(scoreD * 100);
-      var phaseD = nbRepD > 0 ? calculerPhaseDepuisScore(scoreD) : null;
+      var repD = diagD.reponses || {};
+      var nbRepD = Object.keys(repD).length;
+      var scorePhaseD = nbRepD > 0 ? calculerScorePhase(repD) : 0;
+      var scoreEligD = nbRepD > 0 ? calculerScoreEligibilite(repD) : 0;
+      var phaseD = nbRepD > 0 ? calculerPhaseDepuisScore(scorePhaseD) : null;
       var niveauD = phaseD === 1 ? 'Idéation' : phaseD === 2 ? 'Prototypage' : phaseD === 3 ? 'Mise en Marché' : phaseD === 4 ? 'Scale-up' : '';
       var badgeD = diagD.statut === 'realise'
         ? '<span class="diag-vignette-badge" style="background:rgba(51,181,161,0.12);color:var(--vert);">✓ Réalisé</span>'
         : diagD.statut === 'en-cours'
-          ? '<span class="diag-vignette-badge" style="background:rgba(252,194,0,0.15);color:#a07800;">' + nbRepD + '/6 axes</span>'
+          ? '<span class="diag-vignette-badge" style="background:rgba(252,194,0,0.15);color:#a07800;">' + nbRepD + '/8 axes</span>'
           : '<span class="diag-vignette-badge" style="background:var(--gris-clair);color:var(--gris-meta);">1er RDV</span>';
       var syntheseD = nbRepD > 0
         ? '<div class="diag-vignette-synthese">'
-            + '<div><div class="diag-vignette-score">' + scorePctD + '%</div><div class="diag-vignette-score-label">Maturité</div></div>'
+            + '<div><div class="diag-vignette-score">' + Math.round(scorePhaseD*100) + '%</div><div class="diag-vignette-score-label">Phase : ' + niveauD + '</div></div>'
             + '<div class="diag-vignette-mini-bars">'
-            + DIAG_DECOUVERTE_AXES.map(function(axe) {
-                var val = diagD.reponses[axe.id] || 0;
-                var pct = Math.round((val / 4) * 100);
+            + DIAG_FUSION_AXES.filter(function(a){return !a.factuel;}).map(function(axe) {
+                var val = axe.sousScore ? repD[axe.id+'_m'] : repD[axe.id];
+                var pct = val !== undefined ? Math.round((val/3)*100) : 0;
                 return '<div class="diag-vignette-mini-bar-row">'
                   + '<div class="diag-vignette-mini-bar-label">' + axe.label.split(' ').slice(0,2).join(' ') + '</div>'
                   + '<div class="diag-vignette-mini-bar-wrap"><div class="diag-vignette-mini-bar-fill" style="width:' + pct + '%;background:' + axe.color + ';"></div></div>'
@@ -6785,7 +6875,7 @@ function renderDiagnostics(projet, diagOuvert) {
       return {
         cls: 'pi' + (diagD.statut === 'realise' ? ' realise' : diagD.statut === 'en-cours' ? ' en-cours' : ''),
         icon: '🔍', nom: 'Diagnostic Découverte',
-        desc: 'Évaluer la maturité du projet sur 6 axes clés — calcule automatiquement la phase et les besoins.',
+        desc: '8 axes — calcule automatiquement la phase et l\'éligibilité du projet.',
         profil: 'Tous profils — 1er RDV',
         badge: badgeD,
         synthese: syntheseD,
@@ -6860,181 +6950,170 @@ function renderDiagnostics(projet, diagOuvert) {
     + '</div>'
     + '<div class="diag-accueil-grid">' + vignetteHtml + '</div>';
 }
-function renderDiagDecouverte(projet) {
+function renderDiagFusion(projet) {
   var container = document.getElementById('diagnostics-content');
   if (!container || !projet) return;
-
   if (!projet.diagDecouverte) projet.diagDecouverte = { reponses: {}, statut: 'non-demarre', date: null };
   var diag = projet.diagDecouverte;
   var reponses = diag.reponses || {};
-  var nbReponses = Object.keys(reponses).length;
-  var score = nbReponses > 0 ? calculerScoreDecouverte(reponses) : 0;
-  var scorePct = Math.round(score * 100);
-  var phase = nbReponses > 0 ? calculerPhaseDepuisScore(score) : null;
-  var niveauLabel = phase === 1 ? 'Idéation' : phase === 2 ? 'Prototypage' : phase === 3 ? 'Mise en Marché' : phase === 4 ? 'Scale-up' : '—';
-  var phaseColor = phase ? (PHASE_COLORS[phase] || '#FCC200') : '#999';
+  reponses['dis'] = calculerNiveauDIS(projet.dis);
 
-  var questionsHtml = DIAG_DECOUVERTE_AXES.map(function(axe, i) {
-    var valActuelle = reponses[axe.id] || null;
-    var niveauxHtml = DIAG_DECOUVERTE_NIVEAUX.map(function(n) {
-      var sel = valActuelle === n.val;
-      return '<div onclick="repondreDecouverte(\'' + axe.id + '\',' + n.val + ')" '
-        + 'style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:var(--radius-sm);border:1.5px solid ' + (sel ? axe.color : 'var(--gris-moyen)') + ';background:' + (sel ? axe.color + '15' : 'var(--gris-clair)') + ';cursor:pointer;margin-bottom:6px;transition:all 0.15s;">'
-        + '<div style="width:16px;height:16px;border-radius:50%;border:2px solid ' + (sel ? axe.color : 'var(--gris-moyen)') + ';flex-shrink:0;margin-top:1px;background:' + (sel ? axe.color : 'transparent') + ';display:flex;align-items:center;justify-content:center;">'
-        + (sel ? '<div style="width:6px;height:6px;border-radius:50%;background:var(--blanc);"></div>' : '')
-        + '</div>'
-        + '<div style="font-size:12px;font-weight:' + (sel ? '600' : '400') + ';color:' + (sel ? axe.color : 'var(--gris-texte)') + ';line-height:1.4;">'
-        + 'Niveau ' + n.val + ' — ' + n.labels[i]
-        + '</div></div>';
+  var scorePhase = calculerScorePhase(reponses);
+  var scoreElig = calculerScoreEligibilite(reponses);
+  var phase = calculerPhaseDepuisScore(scorePhase);
+  var verdict = calculerVerdictEligibilite(scoreElig);
+  var verdictLabels = { 'retenu': 'Retenu', 'a-examiner': 'À examiner en collectif', 'reoriente': 'Réorienté' };
+  var verdictColors = { 'retenu': '#33B5A1', 'a-examiner': '#c49000', 'reoriente': '#E3516D' };
+  var niveauLabel = phase === 1 ? 'Idéation' : phase === 2 ? 'Prototypage' : phase === 3 ? 'Mise en Marché' : 'Scale-up';
+  var phaseColor = PHASE_COLORS[phase] || '#FCC200';
+  var nbReponses = Object.keys(reponses).filter(function(k){ return k !== 'dis'; }).length;
+
+  function niveauxBlock(axe, champ, questionTxt, niveaux) {
+    var valActuelle = reponses[axe.id + (champ ? ('_' + champ) : '')];
+    var btns = niveaux.map(function(label, ni) {
+      var sel = valActuelle === ni;
+      var cls = sel ? (ni >= 2 ? 'sel-pos' : ni === 1 ? 'sel-med' : 'sel-neg') : '';
+      return '<button class="diag-niveau-btn ' + cls + '" onclick="repondreDecouverteAxe(\'' + axe.id + '\',\'' + (champ||'') + '\',' + ni + ')">' + label + '</button>';
     }).join('');
+    return '<div class="diag-pilier-question" style="padding-left:0;margin-bottom:8px;">' + questionTxt + '</div>'
+      + '<div class="diag-niveaux" style="padding-left:0;">' + btns + '</div>';
+  }
 
-    return '<div style="background:var(--blanc);border:1.5px solid ' + (valActuelle ? axe.color + '60' : 'var(--gris-moyen)') + ';border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:12px;">'
-      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
-        + '<div style="width:10px;height:10px;border-radius:50%;background:' + axe.color + ';flex-shrink:0;"></div>'
-        + '<div style="font-size:13px;font-weight:700;color:var(--noir);">' + axe.label + '</div>'
-        + (valActuelle ? '<span style="margin-left:auto;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:' + axe.color + '20;color:' + axe.color + ';">Niveau ' + valActuelle + '</span>' : '')
-      + '</div>'
-      + niveauxHtml
-    + '</div>';
+  var axesHtml = DIAG_FUSION_AXES.map(function(axe, i) {
+    if (axe.factuel) {
+      return '<div class="diag-pilier actif" style="opacity:0.85;">'
+        + '<div class="diag-pilier-header"><div class="diag-pilier-num" style="background:' + axe.color + ';">' + (i+1) + '</div>'
+        + '<div class="diag-pilier-nom">' + axe.label + '</div>'
+        + '<span class="diag-axe-badge" style="background:' + axe.color + '20;color:' + axe.color + ';">Automatique</span></div>'
+        + '<div class="diag-pilier-question">Calculé depuis le DIS de la fiche projet — aucune question à poser.</div></div>';
+    }
+    var body = '';
+    if (axe.sousScore) {
+      body += '<div style="font-size:11px;font-weight:700;color:' + axe.color + ';margin-bottom:6px;">Maturité</div>';
+      body += niveauxBlock(axe, 'm', axe.question, axe.niveaux);
+      if (reponses[axe.id + '_m'] !== undefined) {
+        body += '<div style="font-size:11px;font-weight:700;color:' + axe.color + ';margin:14px 0 6px;">Nouveauté</div>';
+        body += niveauxBlock(axe, 'n', axe.questionNouveaute, axe.niveauxNouveaute);
+      }
+    } else {
+      body += niveauxBlock(axe, '', axe.question, axe.niveaux);
+    }
+    var repondu = axe.sousScore ? (reponses[axe.id+'_m'] !== undefined) : (reponses[axe.id] !== undefined);
+    return '<div class="diag-pilier' + (repondu ? ' actif' : '') + '">'
+      + '<div class="diag-pilier-header"><div class="diag-pilier-num" style="background:' + axe.color + ';">' + (i+1) + '</div>'
+      + '<div class="diag-pilier-nom">' + axe.label + '</div></div>'
+      + '<div style="padding-left:38px;">' + body + '</div></div>';
   }).join('');
 
-  var scoresHtml = DIAG_DECOUVERTE_AXES.map(function(axe) {
-    var val = reponses[axe.id] || 0;
-    var pct = Math.round((val / 4) * 100);
-    return '<div class="diag-axe-row">'
-      + '<div class="diag-axe-nom">' + axe.label + '</div>'
+  var scoresHtml = DIAG_FUSION_AXES.map(function(axe) {
+    var val = axe.factuel ? reponses['dis'] : (axe.sousScore ? reponses[axe.id+'_m'] : reponses[axe.id]);
+    var pct = val !== undefined ? Math.round((val/3)*100) : 0;
+    return '<div class="diag-axe-row"><div class="diag-axe-nom">' + axe.label + '</div>'
       + '<div class="diag-axe-bar"><div class="diag-axe-fill" style="width:' + pct + '%;background:' + axe.color + ';"></div></div>'
-      + '<div class="diag-axe-pct">' + (val > 0 ? 'N' + val : '—') + '</div>'
-    + '</div>';
+      + '<div class="diag-axe-pct">' + (val !== undefined ? 'N'+val : '—') + '</div></div>';
   }).join('');
 
-  var canvasId = 'radar-decouverte-' + Date.now();
+  var outilsHtml = renderOutilsSuggeres(verdict, phase);
 
   container.innerHTML = '<button class="diag-back-btn" onclick="renderDiagnostics(currentProjet)">← Retour aux diagnostics</button>'
-    + '<div class="diag-header">'
-      + '<div><div class="diag-titre">Diagnostic Découverte</div><div class="diag-sous-titre">6 axes de maturité · Phase calculée automatiquement</div></div>'
-      + '<span class="diag-statut-badge ' + (diag.statut === 'realise' ? 'diag-statut-realise' : diag.statut === 'en-cours' ? 'diag-statut-cours' : 'diag-statut-non') + '">' + (diag.statut === 'realise' ? 'Réalisé' : diag.statut === 'en-cours' ? 'En cours' : 'Non démarré') + '</span>'
-    + '</div>'
-    + '<div class="diag-layout">'
-      + '<div>' + questionsHtml + '</div>'
-      + '<div class="diag-panel">'
-        + '<div class="diag-score-bloc">'
-          + '<div class="diag-score-titre">Score par axe</div>'
-          + '<div class="diag-axes-scores">' + scoresHtml + '</div>'
-          + '<div class="diag-progression">'
-            + '<div class="diag-prog-val">' + scorePct + '%</div>'
-            + '<div><div class="diag-prog-label">Maturité globale</div>'
-            + (phase ? '<div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:' + phaseColor + '20;border:1.5px solid ' + phaseColor + '40;border-radius:var(--radius-sm);padding:4px 10px;font-size:12px;font-weight:700;color:' + phaseColor + ';">Phase ' + phase + ' — ' + niveauLabel + '</div>' : '')
-            + '</div>'
-          + '</div>'
-        + '</div>'
-        + '<div class="diag-radar-bloc"><canvas id="' + canvasId + '" width="280" height="280"></canvas></div>'
-        + '<button class="diag-btn-enregistrer" onclick="enregistrerDiagDecouverte()" ' + (nbReponses < 6 ? 'disabled' : '') + '>'
-          + (nbReponses < 6 ? 'Évaluer les ' + (6 - nbReponses) + ' axes restants' : 'Enregistrer le diagnostic')
-        + '</button>'
-        + (diag.statut === 'realise' ? '<button onclick="genererLivrableDecouverte()" style="width:100%;margin-top:8px;font-family:var(--font);font-size:13px;font-weight:600;color:var(--blanc);background:var(--noir);border:none;border-radius:var(--radius);padding:12px;cursor:pointer;">📄 Générer le livrable</button>' : '')
-      + '</div>'
-    + '</div>';
-
-  // Radar
-  setTimeout(function() {
-    var canvas = document.getElementById(canvasId);
-    if (!canvas || typeof Chart === 'undefined') return;
-    new Chart(canvas, {
-      type: 'radar',
-      data: {
-        labels: DIAG_DECOUVERTE_AXES.map(function(a) { return a.label; }),
-        datasets: [{
-          data: DIAG_DECOUVERTE_AXES.map(function(a) { return Math.round(((reponses[a.id] || 0) / 4) * 100); }),
-          backgroundColor: 'rgba(252,194,0,0.15)',
-          borderColor: '#FCC200',
-          borderWidth: 2,
-          pointBackgroundColor: DIAG_DECOUVERTE_AXES.map(function(a) { return a.color; }),
-          pointRadius: 4,
-        }]
-      },
-      options: {
-        scales: { r: { min: 0, max: 100, ticks: { stepSize: 25, font: { size: 9 } }, pointLabels: { font: { size: 10 } } } },
-        plugins: { legend: { display: false } },
-        responsive: false,
-      }
-    });
-  }, 100);
+    + '<div class="diag-header"><div><div class="diag-titre">Diagnostic Découverte</div>'
+    + '<div class="diag-sous-titre">8 axes · Phase et éligibilité calculées automatiquement</div></div>'
+    + '<span class="diag-statut-badge ' + (diag.statut==='realise'?'diag-statut-realise':diag.statut==='en-cours'?'diag-statut-cours':'diag-statut-non') + '">'
+    + (diag.statut==='realise'?'Réalisé':diag.statut==='en-cours'?'En cours':'Non démarré') + '</span></div>'
+    + '<div class="diag-layout"><div>' + axesHtml + '</div>'
+    + '<div class="diag-panel"><div class="diag-score-bloc">'
+    + '<div class="diag-score-titre">Score par axe</div><div class="diag-axes-scores">' + scoresHtml + '</div>'
+    + '<div class="diag-progression" style="flex-direction:column;align-items:flex-start;gap:10px;">'
+    + '<div style="display:flex;align-items:center;gap:10px;"><div class="diag-prog-val">' + Math.round(scorePhase*100) + '%</div>'
+    + '<div><div class="diag-prog-label">Phase</div><div style="margin-top:4px;display:inline-flex;gap:6px;background:' + phaseColor + '20;border:1.5px solid ' + phaseColor + '40;border-radius:var(--radius-sm);padding:3px 10px;font-size:12px;font-weight:700;color:' + phaseColor + ';">' + niveauLabel + '</div></div></div>'
+    + '<div style="display:flex;align-items:center;gap:10px;"><div class="diag-prog-val">' + Math.round(scoreElig*100) + '%</div>'
+    + '<div><div class="diag-prog-label">Éligibilité</div><div style="margin-top:4px;display:inline-flex;gap:6px;background:' + verdictColors[verdict] + '20;border:1.5px solid ' + verdictColors[verdict] + '40;border-radius:var(--radius-sm);padding:3px 10px;font-size:12px;font-weight:700;color:' + verdictColors[verdict] + ';">' + verdictLabels[verdict] + '</div></div></div>'
+    + '</div></div>' + outilsHtml
+    + '<button class="diag-btn-enregistrer" onclick="enregistrerDiagFusion()" ' + (nbReponses===0?'disabled':'') + '>'
+    + (nbReponses===0?'Répondez à au moins un axe':'Enregistrer le diagnostic') + '</button>'
+    + '</div></div>';
 }
 
-function repondreDecouverte(axeId, val) {
+function renderOutilsSuggeres(verdict, phase) {
+  if (verdict !== 'retenu') return '';
+  var map = [
+    { label: 'Business Model Canvas', min: 1, max: 2 },
+    { label: 'Guide réussir sa mise en marché', min: 3, max: 3 },
+    { label: 'Plan de financement Bpifrance', min: 1, max: 3 },
+  ];
+  var items = map.filter(function(m){ return phase >= m.min && phase <= m.max; }).map(function(m){ return m.label; });
+  if (items.length === 0) return '';
+  return '<div class="diag-reco visible" style="margin-top:12px;"><strong>Outils suggérés :</strong><br>' + items.join('<br>') + '</div>';
+}
+   
+// ============================================================
+// SAISIE DIAGNOSTIC FUSIONNÉ — remplace repondreDecouverte
+// ============================================================
+function repondreDecouverteAxe(axeId, champ, val) {
   if (!currentProjet) return;
   if (!currentProjet.diagDecouverte) currentProjet.diagDecouverte = { reponses: {}, statut: 'non-demarre', date: null };
-  currentProjet.diagDecouverte.reponses[axeId] = val;
+  var cle = champ ? (axeId + '_' + champ) : axeId;
+  currentProjet.diagDecouverte.reponses[cle] = val;
   var nb = Object.keys(currentProjet.diagDecouverte.reponses).length;
   if (nb > 0 && currentProjet.diagDecouverte.statut === 'non-demarre') currentProjet.diagDecouverte.statut = 'en-cours';
-  // Recalculer et mettre à jour la phase si pas manuelle
   if (!currentProjet.phaseManuelle) {
-    var score = calculerScoreDecouverte(currentProjet.diagDecouverte.reponses);
-    var nouvellePhase = calculerPhaseDepuisScore(score);
+    var scorePhase = calculerScorePhase(currentProjet.diagDecouverte.reponses);
+    var nouvellePhase = calculerPhaseDepuisScore(scorePhase);
     if (nouvellePhase !== currentProjet.phase) {
       currentProjet.phase = nouvellePhase;
       currentProjet._filtresFinancements = null;
     }
   }
   var scrollY = window.scrollY;
+  renderDiagFusion(currentProjet);
+  window.scrollTo(0, scrollY);
+}
+  var scrollY = window.scrollY;
   renderDiagDecouverte(currentProjet);
   window.scrollTo(0, scrollY);
 }
 
-function enregistrerDiagDecouverte() {
+function enregistrerDiagFusion() {
   if (!currentProjet || !currentProjet.diagDecouverte) return;
+  var reponses = currentProjet.diagDecouverte.reponses || {};
   var diag = currentProjet.diagDecouverte;
-  var reponses = diag.reponses || {};
-  var nb = Object.keys(reponses).length;
-  if (nb < 6) { showToast('Évaluez les 6 axes avant d\'enregistrer', 'info'); return; }
-
   diag.statut = 'realise';
   diag.date = new Date().toISOString().split('T')[0];
-  var score = calculerScoreDecouverte(reponses);
-  var scorePct = Math.round(score * 100);
-  var phase = calculerPhaseDepuisScore(score);
+
+  var scorePhase = calculerScorePhase(reponses);
+  var scoreElig = calculerScoreEligibilite(reponses);
+  var phase = calculerPhaseDepuisScore(scorePhase);
+  var verdict = calculerVerdictEligibilite(scoreElig);
+  var verdictLabels = { 'retenu': 'Retenu', 'a-examiner': 'À examiner en collectif', 'reoriente': 'Réorienté' };
   var niveauLabel = phase === 1 ? 'Idéation' : phase === 2 ? 'Prototypage' : phase === 3 ? 'Mise en Marché' : 'Scale-up';
 
-  // Mettre à jour la phase du projet
   if (!currentProjet.phaseManuelle) {
-    if (currentProjet.phase !== phase) {
-      currentProjet.phase = phase;
-      // Réinitialiser les filtres de financement pour refléter la nouvelle phase
-      currentProjet._filtresFinancements = null;
-    }
+    if (currentProjet.phase !== phase) { currentProjet.phase = phase; currentProjet._filtresFinancements = null; }
   }
-  // Mettre à jour les besoins
   currentProjet.besoins = calculerBesoinsDepuisReponses(reponses);
+  currentProjet.diagDecouverte.verdictEligibilite = verdict;
+  currentProjet.diagDecouverte.scoreEligibilite = scoreElig;
 
-  // Ajouter à l'historique
   if (!currentProjet.sessions) currentProjet.sessions = [];
   var idxExistant = -1;
   for (var i = 0; i < currentProjet.sessions.length; i++) {
     if (currentProjet.sessions[i].type === 'Diagnostic Découverte') { idxExistant = i; break; }
   }
-  var besoinsDetectes = calculerBesoinsDepuisReponses(reponses);
   var sessionDiag = {
     numero: idxExistant >= 0 ? currentProjet.sessions[idxExistant].numero : currentProjet.sessions.length + 1,
-    date: diag.date,
-    type: 'Diagnostic Découverte',
-    phase: currentProjet.phase,
-    duree: null,
-    scoreMoyen: scorePct,
-    scoresAxes: DIAG_DECOUVERTE_AXES.map(function(a) {
-      return { label: a.label, score: Math.round(((reponses[a.id] || 0) / 4) * 100), color: a.color };
-    }),
-    realise: ['Diagnostic Découverte réalisé — Score : ' + scorePct + '% — ' + niveauLabel],
-    decide: besoinsDetectes.map(function(b) { return 'Besoin identifié : ' + b; }),
-    commentaire: 'Phase recommandée : Phase ' + phase + ' — ' + niveauLabel,
+    date: diag.date, type: 'Diagnostic Découverte', phase: currentProjet.phase, duree: null,
+    scoreMoyen: Math.round(scorePhase * 100),
+    realise: ['Diagnostic réalisé — Phase : ' + niveauLabel + ' (' + Math.round(scorePhase*100) + '%) — Éligibilité : ' + verdictLabels[verdict] + ' (' + Math.round(scoreElig*100) + '%)'],
+    decide: currentProjet.besoins.map(function(b) { return 'Besoin identifié : ' + b; }),
+    commentaire: 'Phase : ' + niveauLabel + ' · Éligibilité : ' + verdictLabels[verdict],
   };
   if (idxExistant >= 0) currentProjet.sessions[idxExistant] = sessionDiag;
   else currentProjet.sessions.push(sessionDiag);
 
   renderFicheProjet(currentProjet);
-  renderDiagDecouverte(currentProjet);
+  renderDiagFusion(currentProjet);
   renderHistorique(currentProjet);
-  showToast('Diagnostic Découverte enregistré — Phase ' + phase + ' calculée ✓', 'success');
+  showToast('Diagnostic enregistré ✓', 'success');
   sauvegardeAuto();
 }
 
