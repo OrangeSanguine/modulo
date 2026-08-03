@@ -5033,8 +5033,8 @@ function renderFicheProjet(p) {
   // Recalculer la phase automatiquement SAUF si la phase a été forcée manuellement
  if (!p.phaseManuelle) {
     // Priorité au diagnostic découverte si rempli
-    if (p.diagDecouverte && p.diagDecouverte.reponses && Object.keys(p.diagDecouverte.reponses).length >= 3) {
-      var scoreD = calculerScoreDecouverte(p.diagDecouverte.reponses);
+    if (p.diagDecouverte && p.diagDecouverte.reponses && Object.keys(p.diagDecouverte.reponses).length > 0) {
+      var scoreD = calculerScorePhase(p.diagDecouverte.reponses);
       var phaseDepuisDiag = calculerPhaseDepuisScore(scoreD);
       if (phaseDepuisDiag !== p.phase) p.phase = phaseDepuisDiag;
     } else {
