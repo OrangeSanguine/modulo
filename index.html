@@ -5233,9 +5233,9 @@ DIAG_FUSION_AXES.filter(function(a){ return !a.factuel; }).forEach(function(axe,
       axeEl.appendChild(headerEl);
 
       champs.forEach(function(champ) {
-        if (champ.dependsOn && !newProjData._diagDecouverte[champ.dependsOn]) return;
+        if (champ.dependsOn && newProjData._diagDecouverte[champ.dependsOn] === undefined) return;
         var cle = champ.suffix ? (axe.id + '_' + champ.suffix) : axe.id;
-        var valChamp = newProjData._diagDecouverte[cle] || null;
+        var valChamp = newProjData._diagDecouverte[cle];
 
         var qEl = document.createElement('div');
         qEl.style.cssText = 'font-size:12px;color:var(--gris-texte);margin:10px 0 6px;';
@@ -5487,13 +5487,14 @@ function initEtape5() {
 
 function creerProjet() {
 // Récupérer données diagnostic découverte
-  var diagDecouverte = newProjData._diagDecouverte || {};
-  var scoreDecouverte = calculerScoreDecouverte(diagDecouverte);
+var diagDecouverte = newProjData._diagDecouverte || {};
+  var scorePhase = calculerScorePhase(diagDecouverte);
+  var scoreElig = calculerScoreEligibilite(diagDecouverte);
   var besoinsCoches = calculerBesoinsDepuisReponses(diagDecouverte);
   var id = 'PRJ' + Date.now().toString().slice(-6);
   // Phase calculée depuis le diagnostic si rempli, sinon Phase 1 par défaut
   var nbAxesRemplis = Object.keys(diagDecouverte).length;
-  var phase = nbAxesRemplis >= 3 ? calculerPhaseDepuisScore(scoreDecouverte) : (parseInt(newProjData.phase) || 1);
+  var phase = nbAxesRemplis > 0 ? calculerPhaseDepuisScore(scorePhase) : (parseInt(newProjData.phase) || 1);
   var roadmap = newProjData.type === 'plus3' ? 'B' : 'A';
   var jalons_total = roadmap === 'B' ? 23 : 16;
   var dateRdv = document.getElementById('proj-date').value || new Date().toISOString().split('T')[0];
@@ -5548,11 +5549,13 @@ function creerProjet() {
     actionsAPreparer: [],
      diagDecouverte: {
       reponses: diagDecouverte,
-      score: scoreDecouverte,
-      statut: nbAxesRemplis === 6 ? 'realise' : (nbAxesRemplis > 0 ? 'en-cours' : 'non-demarre'),
+      score: scorePhase,
+      scoreEligibilite: scoreElig,
+      verdictEligibilite: nbAxesRemplis > 0 ? calculerVerdictEligibilite(scoreElig) : null,
+      statut: nbAxesRemplis >= 9 ? 'realise' : (nbAxesRemplis > 0 ? 'en-cours' : 'non-demarre'),
       date: dateRdv,
     },
-    phaseManuelle: nbAxesRemplis < 3,
+    phaseManuelle: nbAxesRemplis === 0,
   };
 
   projets.unshift(newProjet);
