@@ -10267,10 +10267,12 @@ function renderAdminFinancements() {
   var el = document.getElementById('admin-financements-content');
   if (!el) return;
   var items = (RESSOURCES || []).filter(function(r){ return r.categorie === 'Financement'; });
+  var elBar = '<div class="admin-actions-bar"><span style="font-size:12px;color:var(--gris-texte);">Mettre à jour la base de données</span><button class="admin-btn-ajouter" onclick="sauvegarderRessourcesAdmin(\'Financement\', \'01_dispositifs_financement\')">💾 Enregistrer vers le Sheet</button></div>'; 
   el.innerHTML = '<div class="admin-actions-bar">'
     + '<span style="font-size:12px;color:var(--gris-texte);">' + items.length + ' dispositifs</span>'
     + '<button class="admin-btn-ajouter" onclick="adminAjouterFinancement()">+ Ajouter</button>'
   + '</div>'
+  + elBar   
   + '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>'
     + '<th>Nom</th><th>Type</th><th>Financeur</th><th>Niveau</th>'
     + '<th>Description</th><th>Min €</th><th>Max €</th><th>Taux</th>'
@@ -10518,7 +10520,28 @@ function adminSupprimerRessource(cat, idx) {
   if (cat === 'Outil') renderAdminOutils();
   if (cat === 'Acteur') renderAdminContacts();
 }
+function sauvegarderRessourcesAdmin(categorie, nomOnglet) {
+  var items = (RESSOURCES || []).filter(function(r){ return r.categorie === categorie; });
+  var lignes = items.map(function(item) {
+    var raw = item._raw || {};
+    var ligne = Object.assign({}, raw);
+    ligne['Nom'] = item.label || '';
+    ligne['Actif'] = item.actif === false ? 'Non' : 'Oui';
+    return ligne;
+  });
 
+  fetch(APPS_SCRIPT_URL + '?action=sauvegarderRessources&token=modulo-vipe-2026', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ onglet: nomOnglet, lignes: lignes }),
+  }).then(function(r) { return r.json(); }).then(function(result) {
+    if (result && result.ok) showToast('Enregistré dans le Sheet ✓', 'success');
+    else showToast('Erreur lors de l\'enregistrement', 'info');
+  }).catch(function(e) {
+    console.error('[MODULO] Erreur réseau ressources :', e);
+    showToast('Erreur réseau', 'info');
+  });
+}
 function adminAjouterFinancement() {
   if (!RESSOURCES) RESSOURCES = [];
   RESSOURCES.push({
