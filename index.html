@@ -3787,6 +3787,7 @@ body {
         <button class="tab-btn" onclick="showAdminTab('outils', this)">🛠 Outils</button>
         <button class="tab-btn" onclick="showAdminTab('contacts', this)">🤝 Contacts</button>
         <button class="tab-btn" onclick="showAdminTab('consultants', this)">👤 Consultants</button>
+         <button class="tab-btn" onclick="showAdminTab('textes', this)">📝 Textes diagnostic</button>
       </div>
 
       <div class="admin-tab-pane active" id="admin-tab-financements">
@@ -3800,6 +3801,9 @@ body {
       </div>
       <div class="admin-tab-pane" id="admin-tab-consultants">
         <div id="admin-consultants-content"><div class="fiche-empty">Chargement...</div></div>
+      </div>
+       <div class="admin-tab-pane" id="admin-tab-textes">
+        <div id="admin-textes-content"><div class="fiche-empty">Chargement...</div></div>
       </div>
 
     </div>
@@ -4068,7 +4072,7 @@ body {
 <script>
 // Variables Google Sheet — définies en premier
 var sheetData = {
-  dispositifs: [], acteurs: [], outils: [], roadmaps: [],
+  dispositifs: [], acteurs: [], outils: [], roadmaps: [], textesDiag: [],
   referentiel: [], historique: [], correspondances: [], consultants: [],
 };
 var sheetLoaded = false;
@@ -6967,15 +6971,30 @@ function renderDiagFusion(projet) {
   var phaseColor = PHASE_COLORS[phase] || '#FCC200';
   var nbReponses = Object.keys(reponses).filter(function(k){ return k !== 'dis'; }).length;
 
-  function niveauxBlock(axe, champ, questionTxt, niveaux) {
-    var valActuelle = reponses[axe.id + (champ ? ('_' + champ) : '')];
-    var btns = niveaux.map(function(label, ni) {
+function niveauxBlock(axe, champ, questionTxt) {
+    var cle = axe.id + (champ ? ('_' + champ) : '');
+    var valActuelle = reponses[cle];
+    var btns = '';
+    for (var ni = 0; ni < 4; ni++) {
       var sel = valActuelle === ni;
       var cls = sel ? (ni >= 2 ? 'sel-pos' : ni === 1 ? 'sel-med' : 'sel-neg') : '';
-      return '<button class="diag-niveau-btn ' + cls + '" onclick="repondreDecouverteAxe(\'' + axe.id + '\',\'' + (champ||'') + '\',' + ni + ')">' + label + '</button>';
-    }).join('');
+      var label = getTexteAffiche(cle, ni, 'constat');
+      btns += '<button class="diag-niveau-btn ' + cls + '" onclick="repondreDecouverteAxe(\'' + axe.id + '\',\'' + (champ||'') + '\',' + ni + ')">' + label + '</button>';
+    }
+    var editBlock = '';
+    if (valActuelle !== undefined) {
+      var constatVal = (currentProjet.diagDecouverte.textesEdites && currentProjet.diagDecouverte.textesEdites[cle+'_constat']) || getTexteAxe(cle, valActuelle, 'constat');
+      var enjeuVal = (currentProjet.diagDecouverte.textesEdites && currentProjet.diagDecouverte.textesEdites[cle+'_enjeu']) || getTexteAxe(cle, valActuelle, 'enjeu');
+      editBlock = '<div style="margin-top:8px;padding:10px 12px;background:var(--gris-clair);border-radius:var(--radius-sm);">'
+        + '<label style="font-size:10px;font-weight:700;color:var(--gris-texte);display:block;margin-bottom:3px;">Constat (modifiable)</label>'
+        + '<textarea class="session-textarea" style="width:100%;font-size:12px;min-height:44px;" oninput="majTexteEdite(\'' + cle + '\',\'constat\',this.value)">' + constatVal + '</textarea>'
+        + '<label style="font-size:10px;font-weight:700;color:var(--gris-texte);display:block;margin:8px 0 3px;">Enjeu (modifiable)</label>'
+        + '<textarea class="session-textarea" style="width:100%;font-size:12px;min-height:60px;" oninput="majTexteEdite(\'' + cle + '\',\'enjeu\',this.value)">' + enjeuVal + '</textarea>'
+        + '</div>';
+    }
     return '<div class="diag-pilier-question" style="padding-left:0;margin-bottom:8px;">' + questionTxt + '</div>'
-      + '<div class="diag-niveaux" style="padding-left:0;">' + btns + '</div>';
+      + '<div class="diag-niveaux" style="padding-left:0;">' + btns + '</div>'
+      + editBlock;
   }
 
   var axesHtml = DIAG_FUSION_AXES.map(function(axe, i) {
@@ -6989,13 +7008,13 @@ function renderDiagFusion(projet) {
     var body = '';
     if (axe.sousScore) {
       body += '<div style="font-size:11px;font-weight:700;color:' + axe.color + ';margin-bottom:6px;">Maturité</div>';
-      body += niveauxBlock(axe, 'm', axe.question, axe.niveaux);
+      body += niveauxBlock(axe, 'm', axe.question);
       if (reponses[axe.id + '_m'] !== undefined) {
         body += '<div style="font-size:11px;font-weight:700;color:' + axe.color + ';margin:14px 0 6px;">Nouveauté</div>';
-        body += niveauxBlock(axe, 'n', axe.questionNouveaute, axe.niveauxNouveaute);
+        body += niveauxBlock(axe, 'n', axe.questionNouveaute);
       }
     } else {
-      body += niveauxBlock(axe, '', axe.question, axe.niveaux);
+      body += niveauxBlock(axe, '', axe.question);
     }
     var repondu = axe.sousScore ? (reponses[axe.id+'_m'] !== undefined) : (reponses[axe.id] !== undefined);
     return '<div class="diag-pilier' + (repondu ? ' actif' : '') + '">'
@@ -7055,50 +7074,6 @@ function renderOutilsSuggeres(verdict, phase) {
   return '<div class="diag-reco visible" style="margin-top:12px;"><strong>Outils suggérés :</strong><br>' + items.join('<br>') + '</div>';
 }
    
-var DIAG_FUSION_INTERPRETATIONS = {
-  valeur: [
-    "Le problème que vous résolvez et la solution envisagée sont encore en cours de clarification.",
-    "Votre proposition est structurée et commence à être validée par de premiers clients.",
-    "Votre solution est validée sur un marché restreint, avec une différenciation confirmée.",
-    "Votre proposition est éprouvée, reconnue comme innovante, et s'étend déjà à d'autres marchés.",
-  ],
-  marche: [
-    "La connaissance de votre marché est encore à construire, c'est une étape normale à ce stade.",
-    "La segmentation de votre marché est en cours, avec de premiers prospects identifiés.",
-    "Vous avez déjà des clients pilotes ou de premières ventes, avec des retours structurés.",
-    "Votre traction commerciale est forte, sur un marché déjà validé, en expansion.",
-  ],
-  produit: [
-    "Vous avez un concept défini, mais rien de fonctionnel n'est encore développé : la faisabilité reste à démontrer.",
-    "Une première version fonctionne déjà : la faisabilité est démontrée.",
-    "Votre produit fonctionne et est finalisé ; le passage à plus grande échelle est en cours de validation.",
-    "Votre produit ou service est déjà déployé à grande échelle, avec une amélioration continue.",
-  ],
-  modele: [
-    "Votre modèle économique reste à définir précisément.",
-    "Votre modèle est testé auprès des premiers clients, avec de premières sources de revenus.",
-    "Votre modèle est stable, la rentabilité est en cours de validation.",
-    "Votre modèle est éprouvé, avec un chiffre d'affaires récurrent.",
-  ],
-  equipe: [
-    "Le projet est aujourd'hui porté par une seule personne, sans équipe structurée.",
-    "Une équipe technique initiale est constituée, avec des compétences encore partielles.",
-    "Votre équipe est opérationnelle, avec des rôles bien définis.",
-    "Votre organisation est optimisée, avec une équipe complète.",
-  ],
-  ressources: [
-    "Vos besoins en équipements ou outils ne sont pas encore clairement définis.",
-    "Vous êtes en recherche des équipements ou infrastructures adaptés.",
-    "Votre infrastructure est opérationnelle, avec un développement technologique avancé.",
-    "Vous disposez d'un système robuste, avec des process automatisés.",
-  ],
-  fonds: [
-    "Vous ne disposez pas encore de ressources propres mobilisables pour ce projet.",
-    "Vos ressources sont limitées, elles couvrent quelques mois de fonctionnement.",
-    "Vos ressources vous permettent de tenir la phase actuelle du projet.",
-    "Vos ressources sont solides, avec un autofinancement ou une levée déjà engagée.",
-  ],
-};
 function majStructureRecommandee(val) {
   if (!currentProjet || !currentProjet.diagDecouverte) return;
   currentProjet.diagDecouverte.structureRecommandee = val;
@@ -7109,19 +7084,34 @@ function majRaisonReorientation(val) {
   currentProjet.diagDecouverte.raisonReorientation = val;
 }
 
+   function getTexteAffiche(axeCle, niveau, champ) {
+  var diag = currentProjet && currentProjet.diagDecouverte;
+  var overrideKey = axeCle + '_' + champ;
+  if (diag && diag.textesEdites && diag.textesEdites[overrideKey] !== undefined && diag.textesEdites[overrideKey] !== '') {
+    return diag.textesEdites[overrideKey];
+  }
+  return getTexteAxe(axeCle, niveau, champ);
+}
+
+function majTexteEdite(axeCle, champ, val) {
+  if (!currentProjet || !currentProjet.diagDecouverte) return;
+  if (!currentProjet.diagDecouverte.textesEdites) currentProjet.diagDecouverte.textesEdites = {};
+  currentProjet.diagDecouverte.textesEdites[axeCle + '_' + champ] = val;
+}
+   
 function scoreAxeAffichage(axe, reponses) {
   if (axe.factuel) return null;
   if (axe.sousScore) {
     var m = reponses[axe.id + '_m'], n = reponses[axe.id + '_n'];
     if (m === undefined && n === undefined) return null;
     if (n === undefined || (m !== undefined && m >= n)) {
-      return { val: m, texte: DIAG_FUSION_INTERPRETATIONS[axe.id][m] };
+      return { val: m, texte: getTexteAffiche(axe.id + '_m', m, 'constat') };
     }
-    return { val: n, texte: axe.niveauxNouveaute[n] };
+    return { val: n, texte: getTexteAffiche(axe.id + '_n', n, 'constat') };
   }
   var v = reponses[axe.id];
   if (v === undefined) return null;
-  return { val: v, texte: DIAG_FUSION_INTERPRETATIONS[axe.id][v] };
+  return { val: v, texte: getTexteAffiche(axe.id, v, 'constat') };
 }
 
 function collecterPointsFortsVigilance(reponses) {
@@ -7170,12 +7160,12 @@ function genererLivrableFusion() {
     var lignesTexte = '';
     if (axe.sousScore) {
       var m = reponses[axe.id + '_m'], n = reponses[axe.id + '_n'];
-      lignesTexte = (m !== undefined ? '<div style="margin-bottom:4px;"><strong>Maturité :</strong> ' + DIAG_FUSION_INTERPRETATIONS[axe.id][m] + '</div>' : '')
-        + (n !== undefined ? '<div><strong>Nouveauté :</strong> ' + axe.niveauxNouveaute[n] + '</div>' : '');
+      lignesTexte = (m !== undefined ? '<div style="margin-bottom:8px;"><strong>Maturité :</strong> ' + getTexteAffiche(axe.id+'_m', m, 'constat') + '<br><span style="font-style:italic;color:#666;">' + getTexteAffiche(axe.id+'_m', m, 'enjeu') + '</span></div>' : '')
+        + (n !== undefined ? '<div><strong>Nouveauté :</strong> ' + getTexteAffiche(axe.id+'_n', n, 'constat') + '<br><span style="font-style:italic;color:#666;">' + getTexteAffiche(axe.id+'_n', n, 'enjeu') + '</span></div>' : '');
       if (!lignesTexte) lignesTexte = 'Non évalué';
     } else {
       var v = reponses[axe.id];
-      lignesTexte = v !== undefined ? DIAG_FUSION_INTERPRETATIONS[axe.id][v] : 'Non évalué';
+      lignesTexte = v !== undefined ? ('<div>' + getTexteAffiche(axe.id, v, 'constat') + '<br><span style="font-style:italic;color:#666;">' + getTexteAffiche(axe.id, v, 'enjeu') + '</span></div>') : 'Non évalué';
     }
     var val = axe.sousScore ? reponses[axe.id+'_m'] : reponses[axe.id];
     var paliers = '';
@@ -8733,6 +8723,7 @@ async function chargerSheet() {
     { key: 'historique',     name: '06_historique_projets' },
     { key: 'correspondances',name: '07_correspondances_outils_jalons' },
     { key: 'consultants',    name: '08_consultants' },
+     { key: 'textesDiag',     name: '10_textes_diagnostic' },
   ];
 
   var erreurs = [];
@@ -8770,6 +8761,7 @@ async function chargerSheet() {
   appliquerActeurs();
   appliquerOutils();
   appliquerReferentiel05();
+   appliquerTextesDiag();
 
   var msg = erreurs.length > 0
     ? 'Sheet chargé (' + erreurs.length + ' onglet(s) inaccessible(s))'
@@ -8904,6 +8896,32 @@ function appliquerOutils() {
 }
 
 // ── Référentiel 05 (Besoins, Filières, DIS, Leviers, etc.) ───
+   // ── Textes Diagnostic (onglet 10) ─────────────────────────────
+var DIAG_TEXTES = {};
+
+function appliquerTextesDiag() {
+  var items = sheetData.textesDiag;
+  DIAG_TEXTES = {};
+  if (!items || !items.length) return;
+  items.forEach(function(row) {
+    var axe = row['Axe'];
+    var niveau = parseInt(row['Niveau']);
+    var champ = row['Champ'];
+    var texte = row['Texte'];
+    if (!axe || isNaN(niveau) || !champ) return;
+    if (!DIAG_TEXTES[axe]) DIAG_TEXTES[axe] = [{}, {}, {}, {}];
+    if (!DIAG_TEXTES[axe][niveau]) DIAG_TEXTES[axe][niveau] = {};
+    DIAG_TEXTES[axe][niveau][champ] = texte;
+  });
+  console.log('[MODULO] Textes diagnostic chargés : ' + items.length + ' lignes');
+}
+
+function getTexteAxe(cle, niveau, champ) {
+  if (DIAG_TEXTES[cle] && DIAG_TEXTES[cle][niveau] && DIAG_TEXTES[cle][niveau][champ]) {
+    return DIAG_TEXTES[cle][niveau][champ];
+  }
+  return 'Texte non renseigné (à compléter dans Admin → Textes diagnostic)';
+}
 function appliquerReferentiel05() {
   var ref = sheetData.referentiel05;
   if (!ref) return;
@@ -10222,7 +10240,7 @@ window.addEventListener('resize', ajusterTopOnglets);
 // ============================================================
 
 function showAdminTab(tab, btn) {
-  ['financements','outils','contacts','consultants'].forEach(function(t){
+  ['financements','outils','contacts','consultants','textes'].forEach(function(t){
     var el = document.getElementById('admin-tab-' + t);
     if (el) el.classList.remove('active');
   });
@@ -10235,6 +10253,7 @@ function showAdminTab(tab, btn) {
   if (tab === 'outils') renderAdminOutils();
   if (tab === 'contacts') renderAdminContacts();
   if (tab === 'consultants') renderAdminConsultants();
+   if (tab === 'textes') renderAdminTextes();
 }
 
 function renderAdminFinancements() {
@@ -10347,6 +10366,88 @@ function renderAdminContacts() {
   + '</tbody></table></div>';
 }
 
+var DIAG_AXES_LABELS = {
+  valeur: 'Proposition de valeur', marche: 'Marché & Traction',
+  produit_m: 'Produit/Service — Maturité', produit_n: 'Produit/Service — Nouveauté',
+  modele_m: 'Modèle économique — Maturité', modele_n: 'Modèle économique — Nouveauté',
+  equipe: 'Organisation & Équipe', ressources: 'Ressources & Besoins techno',
+  fonds: 'Fonds propres mobilisables',
+};
+var DIAG_AXES_ORDRE = ['valeur','marche','produit_m','produit_n','modele_m','modele_n','equipe','ressources','fonds'];
+
+function renderAdminTextes() {
+  var el = document.getElementById('admin-textes-content');
+  if (!el) return;
+  var lignes = [];
+  DIAG_AXES_ORDRE.forEach(function(cle) {
+    for (var niveau = 0; niveau < 4; niveau++) {
+      ['constat', 'enjeu'].forEach(function(champ) {
+        lignes.push({ cle: cle, niveau: niveau, champ: champ });
+      });
+    }
+  });
+
+  el.innerHTML = '<div class="admin-actions-bar">'
+    + '<span style="font-size:12px;color:var(--gris-texte);">' + lignes.length + ' textes · source : onglet 10_textes_diagnostic</span>'
+    + '<button class="admin-btn-ajouter" onclick="sauvegarderTextesDiagAdmin()">💾 Enregistrer vers le Sheet</button>'
+  + '</div>'
+  + '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>'
+    + '<th>Axe</th><th>Niveau</th><th>Champ</th><th>Texte</th>'
+  + '</tr></thead><tbody>'
+  + lignes.map(function(l, i) {
+      var texte = (DIAG_TEXTES[l.cle] && DIAG_TEXTES[l.cle][l.niveau]) ? (DIAG_TEXTES[l.cle][l.niveau][l.champ] || '') : '';
+      return '<tr>'
+        + '<td>' + DIAG_AXES_LABELS[l.cle] + '</td>'
+        + '<td style="text-align:center;">' + l.niveau + '</td>'
+        + '<td>' + (l.champ === 'constat' ? 'Constat' : 'Enjeu') + '</td>'
+        + '<td><textarea data-cle="' + l.cle + '" data-niveau="' + l.niveau + '" data-champ="' + l.champ + '" onchange="adminUpdateTexteDiag(this)" style="min-width:340px;min-height:50px;">' + _escHtml(texte) + '</textarea></td>'
+      + '</tr>';
+    }).join('')
+  + '</tbody></table></div>';
+}
+
+function adminUpdateTexteDiag(el) {
+  var cle = el.getAttribute('data-cle');
+  var niveau = parseInt(el.getAttribute('data-niveau'));
+  var champ = el.getAttribute('data-champ');
+  if (!DIAG_TEXTES[cle]) DIAG_TEXTES[cle] = [{}, {}, {}, {}];
+  if (!DIAG_TEXTES[cle][niveau]) DIAG_TEXTES[cle][niveau] = {};
+  DIAG_TEXTES[cle][niveau][champ] = el.value;
+}
+
+function sauvegarderTextesDiagAdmin() {
+  var textes = [];
+  DIAG_AXES_ORDRE.forEach(function(cle) {
+    for (var niveau = 0; niveau < 4; niveau++) {
+      ['constat', 'enjeu'].forEach(function(champ) {
+        var texte = (DIAG_TEXTES[cle] && DIAG_TEXTES[cle][niveau]) ? (DIAG_TEXTES[cle][niveau][champ] || '') : '';
+        textes.push({ axe: cle, niveau: niveau, champ: champ, texte: texte });
+      });
+    }
+  });
+
+  var callbackName = 'moduloTextesSaveCb_' + Date.now();
+  var encoded = encodeURIComponent(JSON.stringify(textes));
+  var scriptUrl = APPS_SCRIPT_URL + '?action=sauvegarderTextesDiag&token=modulo-vipe-2026&callback=' + callbackName + '&data=' + encoded;
+  var script = document.createElement('script');
+  var timeout = setTimeout(function() {
+    showToast('Erreur : délai dépassé', 'info');
+    cleanup();
+  }, 15000);
+  function cleanup() {
+    clearTimeout(timeout);
+    if (script.parentNode) script.parentNode.removeChild(script);
+    delete window[callbackName];
+  }
+  window[callbackName] = function(result) {
+    cleanup();
+    if (result && result.ok) showToast('Textes enregistrés dans le Sheet ✓', 'success');
+    else showToast('Erreur lors de l\'enregistrement', 'info');
+  };
+  script.onerror = function() { showToast('Erreur script', 'info'); cleanup(); };
+  script.src = scriptUrl;
+  document.head.appendChild(script);
+}   
 function renderAdminConsultants() {
   var el = document.getElementById('admin-consultants-content');
   if (!el) return;
