@@ -10267,7 +10267,7 @@ function renderAdminFinancements() {
   var el = document.getElementById('admin-financements-content');
   if (!el) return;
   var items = (RESSOURCES || []).filter(function(r){ return r.categorie === 'Financement'; });
-  var elBar = '<div class="admin-actions-bar"><span style="font-size:12px;color:var(--gris-texte);">Mettre à jour la base de données</span><button class="admin-btn-ajouter" onclick="sauvegarderRessourcesAdmin(\'Financement\', \'01_dispositifs_financement\')">💾 Enregistrer vers le Sheet</button></div>'; 
+  var elBar = '<div class="admin-actions-bar"><span style="font-size:12px;color:var(--gris-texte);">Mettre à jour la base de données</span><button class="admin-btn-ajouter" onclick="sauvegarderRessourcesAdmin(\'Financement\', \'01_dispositifs_financement\')">💾 Mettre à jour la base de données</button></div>'; 
   el.innerHTML = '<div class="admin-actions-bar">'
     + '<span style="font-size:12px;color:var(--gris-texte);">' + items.length + ' dispositifs</span>'
     + '<button class="admin-btn-ajouter" onclick="adminAjouterFinancement()">+ Ajouter</button>'
@@ -10316,10 +10316,12 @@ function renderAdminOutils() {
   var el = document.getElementById('admin-outils-content');
   if (!el) return;
   var items = (RESSOURCES || []).filter(function(r){ return r.categorie === 'Outil'; });
+  var elBar = '<div class="admin-actions-bar"><span style="font-size:12px;color:var(--gris-texte);">Mettre à jour la base de données</span><button class="admin-btn-ajouter" onclick="sauvegarderRessourcesAdmin(\'Outil\', \'03_outils_plateforme\')">💾 Mettre à jour la base de données</button></div>'; 
   el.innerHTML = '<div class="admin-actions-bar">'
     + '<span style="font-size:12px;color:var(--gris-texte);">' + items.length + ' outils</span>'
     + '<button class="admin-btn-ajouter" onclick="adminAjouterOutil()">+ Ajouter</button>'
   + '</div>'
+  + elBar   
   + '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>'
     + '<th>Nom</th><th>Description</th><th>Phases</th>'
     + '<th>Profil</th><th>Catégorie</th><th>Besoins</th>'
@@ -10347,10 +10349,12 @@ function renderAdminContacts() {
   var el = document.getElementById('admin-contacts-content');
   if (!el) return;
   var items = (RESSOURCES || []).filter(function(r){ return r.categorie === 'Acteur'; });
+  var elBar = '<div class="admin-actions-bar"><span style="font-size:12px;color:var(--gris-texte);">Mettre à jour la base de données</span><button class="admin-btn-ajouter" onclick="sauvegarderRessourcesAdmin(\'Acteur\', \'02_acteurs_mises_en_relation\')">💾 Mettre à jour la base de données</button></div>'; 
   el.innerHTML = '<div class="admin-actions-bar">'
     + '<span style="font-size:12px;color:var(--gris-texte);">' + items.length + ' contacts</span>'
     + '<button class="admin-btn-ajouter" onclick="adminAjouterContact()">+ Ajouter</button>'
   + '</div>'
+  + elBar   
   + '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>'
     + '<th>Nom</th><th>Description</th><th>Contact direct</th><th>Lien</th>'
     + '<th>Phases</th><th>Type</th><th>Territoire</th><th>Besoins</th>'
