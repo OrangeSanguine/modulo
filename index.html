@@ -10402,7 +10402,7 @@ function renderAdminTextes() {
 
   el.innerHTML = '<div class="admin-actions-bar">'
     + '<span style="font-size:12px;color:var(--gris-texte);">' + lignes.length + ' textes · source : onglet 10_textes_diagnostic</span>'
-    + '<button class="admin-btn-ajouter" onclick="sauvegarderTextesDiagAdmin()">💾 Enregistrer vers le Sheet</button>'
+    + '<button class="admin-btn-ajouter" onclick="sauvegarderTextesDiagAdmin()">💾 Mettre à jour la base de données</button>'
   + '</div>'
   + '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>'
     + '<th>Axe</th><th>Niveau</th><th>Champ</th><th>Texte</th>'
@@ -10458,6 +10458,7 @@ function renderAdminConsultants() {
     + '<span style="font-size:12px;color:var(--gris-texte);">' + CONSULTANTS.length + ' consultants</span>'
     + '<button class="admin-btn-ajouter" onclick="adminAjouterConsultant()">+ Ajouter</button>'
   + '</div>'
+  + '<div class="admin-actions-bar"><span style="font-size:12px;color:var(--gris-texte);">Mettre à jour la base de données</span><button class="admin-btn-ajouter" onclick="sauvegarderConsultantsAdmin()">💾 Mettre à jour la base de données</button></div>'   
   + '<table class="admin-table"><thead><tr>'
     + '<th>Prénom NOM</th><th>Email</th><th>Téléphone</th><th>Spécialité</th><th></th>'
   + '</tr></thead><tbody>'
@@ -10576,6 +10577,22 @@ function adminAjouterContact() {
   renderAdminContacts();
 }
 
+function sauvegarderConsultantsAdmin() {
+  var lignes = CONSULTANTS.map(function(c) {
+    return { 'ID': c.id || '', 'Prénom NOM': c.nom || '', 'Email': c.email || '', 'Téléphone': c.tel || '', 'Actif': 'Oui' };
+  });
+  fetch(APPS_SCRIPT_URL + '?action=sauvegarderRessources&token=modulo-vipe-2026', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ onglet: '08_consultants', lignes: lignes }),
+  }).then(function(r) { return r.json(); }).then(function(result) {
+    if (result && result.ok) showToast('Enregistré dans le Sheet ✓', 'success');
+    else showToast('Erreur lors de l\'enregistrement', 'info');
+  }).catch(function(e) {
+    console.error('[MODULO] Erreur réseau consultants :', e);
+    showToast('Erreur réseau', 'info');
+  });
+}   
 function adminAjouterConsultant() {
   CONSULTANTS.push({ id: 'CONS' + Date.now().toString().slice(-3), nom: 'Prénom NOM', email: '', tel: '' });
   renderAdminConsultants();
