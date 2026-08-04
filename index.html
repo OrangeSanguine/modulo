@@ -4358,7 +4358,10 @@ function showScreen(name) {
       });
     }
   }
-
+if (name === 'accueil') {
+    renderProjets(getSorted(projets));
+    updateDashboard();
+  }
   window.scrollTo(0, 0);
 }
 
@@ -7077,11 +7080,13 @@ function renderOutilsSuggeres(verdict, phase) {
 function majStructureRecommandee(val) {
   if (!currentProjet || !currentProjet.diagDecouverte) return;
   currentProjet.diagDecouverte.structureRecommandee = val;
+  sauvegardeAuto();
 }
 
 function majRaisonReorientation(val) {
   if (!currentProjet || !currentProjet.diagDecouverte) return;
   currentProjet.diagDecouverte.raisonReorientation = val;
+  sauvegardeAuto();
 }
 
    function getTexteAffiche(axeCle, niveau, champ) {
@@ -7097,6 +7102,7 @@ function majTexteEdite(axeCle, champ, val) {
   if (!currentProjet || !currentProjet.diagDecouverte) return;
   if (!currentProjet.diagDecouverte.textesEdites) currentProjet.diagDecouverte.textesEdites = {};
   currentProjet.diagDecouverte.textesEdites[axeCle + '_' + champ] = val;
+  sauvegardeAuto();
 }
    
 function scoreAxeAffichage(axe, reponses) {
@@ -7247,6 +7253,7 @@ function repondreDecouverteAxe(axeId, champ, val) {
       currentProjet._filtresFinancements = null;
     }
   }
+   sauvegardeAuto();
   var scrollY = window.scrollY;
   renderDiagFusion(currentProjet);
   window.scrollTo(0, scrollY);
