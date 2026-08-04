@@ -10433,28 +10433,18 @@ function sauvegarderTextesDiagAdmin() {
     }
   });
 
-  var callbackName = 'moduloTextesSaveCb_' + Date.now();
-  var encoded = encodeURIComponent(JSON.stringify(textes));
-  var scriptUrl = APPS_SCRIPT_URL + '?action=sauvegarderTextesDiag&token=modulo-vipe-2026&callback=' + callbackName + '&data=' + encoded;
-  var script = document.createElement('script');
-  var timeout = setTimeout(function() {
-    showToast('Erreur : délai dépassé', 'info');
-    cleanup();
-  }, 15000);
-  function cleanup() {
-    clearTimeout(timeout);
-    if (script.parentNode) script.parentNode.removeChild(script);
-    delete window[callbackName];
-  }
-  window[callbackName] = function(result) {
-    cleanup();
+ fetch(APPS_SCRIPT_URL + '?action=sauvegarderTextesDiag&token=modulo-vipe-2026', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(textes),
+  }).then(function(r) { return r.json(); }).then(function(result) {
     if (result && result.ok) showToast('Textes enregistrés dans le Sheet ✓', 'success');
     else showToast('Erreur lors de l\'enregistrement', 'info');
-  };
-  script.onerror = function() { showToast('Erreur script', 'info'); cleanup(); };
-  script.src = scriptUrl;
-  document.head.appendChild(script);
-}   
+  }).catch(function(e) {
+    console.error('[MODULO] Erreur réseau textes :', e);
+    showToast('Erreur réseau', 'info');
+  });
+}
 function renderAdminConsultants() {
   var el = document.getElementById('admin-consultants-content');
   if (!el) return;
@@ -10595,10 +10585,8 @@ function afficherStatutSauvegarde(statut) {
 async function sauvegarderProjets() {
   afficherStatutSauvegarde('saving');
 
-  // Alléger les données avant envoi
   var projetsClean = projets.map(function(p) {
     var clone = JSON.parse(JSON.stringify(p));
-    // Supprimer les champs volumineux inutiles
     delete clone._raw;
     delete clone._dernierePhaseSuggestions;
     delete clone.suggestionsIgnorees;
@@ -10610,44 +10598,24 @@ async function sauvegarderProjets() {
     return clone;
   });
 
-  return new Promise(function(resolve) {
-    var callbackName = 'moduloSaveCb_' + Date.now();
-    var encoded = encodeURIComponent(JSON.stringify(projetsClean));
-    var scriptUrl = APPS_SCRIPT_URL + '?action=sauvegarderProjets&token=modulo-vipe-2026&callback=' + callbackName + '&data=' + encoded;
-
-    var script = document.createElement('script');
-    var timeout = setTimeout(function() {
+  try {
+    var response = await fetch(APPS_SCRIPT_URL + '?action=sauvegarderProjets&token=modulo-vipe-2026', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(projetsClean),
+    });
+    var result = await response.json();
+    if (result && result.ok) {
+      afficherStatutSauvegarde('ok');
+      console.log('[MODULO] Projets sauvegardés ✓');
+    } else {
       afficherStatutSauvegarde('error');
-      console.error('[MODULO] Timeout sauvegarde');
-      cleanup(); resolve();
-    }, 15000);
-
-    function cleanup() {
-      clearTimeout(timeout);
-      if (script.parentNode) script.parentNode.removeChild(script);
-      delete window[callbackName];
+      console.error('[MODULO] Erreur sauvegarde :', result);
     }
-
-    window[callbackName] = function(result) {
-      cleanup();
-      if (result && result.ok) {
-        afficherStatutSauvegarde('ok');
-        console.log('[MODULO] Projets sauvegardés ✓');
-      } else {
-        afficherStatutSauvegarde('error');
-        console.error('[MODULO] Erreur sauvegarde :', result);
-      }
-      resolve();
-    };
-
-    script.onerror = function() {
-      afficherStatutSauvegarde('error');
-      console.error('[MODULO] Erreur script sauvegarde');
-      cleanup(); resolve();
-    };
-    script.src = scriptUrl;
-    document.head.appendChild(script);
-  });
+  } catch (e) {
+    afficherStatutSauvegarde('error');
+    console.error('[MODULO] Erreur réseau sauvegarde :', e);
+  }
 }
 
 // Charger les projets via JSONP (contourne CORS sans proxy)
